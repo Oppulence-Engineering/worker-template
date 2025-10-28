@@ -390,6 +390,29 @@ registry.register(new MyJob());
 registry.register(new ProcessBatchJob());
 ```
 
+### Enqueuing Jobs from Other Services
+
+There are several supported ways for producer services to submit work to this worker:
+
+- **Call the Postgres helper** — Works from any language with DB access, e.g.
+  ```sql
+  SELECT graphile_worker.add_job(
+    'send-email',
+    json_build_object('to','user@example.com','subject','Hello','body','Welcome!'),
+    queue_name => 'email'
+  );
+  ```
+
+- **Use `graphile-worker` utilities** — For Node/Bun producers, install `graphile-worker` and:
+  ```ts
+  import { makeWorkerUtils } from 'graphile-worker';
+
+  const utils = await makeWorkerUtils({ connectionString: process.env.DATABASE_URL });
+  await utils.addJob('order-fulfillment', { orderId: 'ORD-123', amount: 42.5 });
+  ```
+
+- **Expose an internal API** — If you prefer not to share database credentials, add a tiny internal endpoint in this service that validates input and calls `graphile_worker.add_job` on behalf of callers.
+
 ## ⚙️ Configuration
 
 Configuration is managed through environment variables with **full Zod validation**:
