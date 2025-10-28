@@ -3,10 +3,11 @@
  * @module jobs/base/BatchJob
  */
 
-import type { z } from 'zod';
 
 import { BaseJob } from '../../core/abstractions/BaseJob';
-import type { JobContext, BatchConfig } from '../../core/types';
+
+import type { JobContext } from '../../core/types';
+import type { z } from 'zod';
 
 /**
  * Batch processing result
@@ -66,7 +67,7 @@ export abstract class BatchJob<
   TPayload extends z.ZodType,
   TItem,
   TResult = void,
-  TMetadata = Record<string, unknown>
+  TMetadata = Record<string, unknown>,
 > extends BaseJob<TPayload, BatchResult<TItem, TResult>, TMetadata> {
   /**
    * Batch size for processing
@@ -116,7 +117,10 @@ export abstract class BatchJob<
     const items = this.extractItems(payload);
     const total = items.length;
 
-    context.logger.info('Starting batch processing', { totalItems: total, batchSize: this.batchSize });
+    context.logger.info('Starting batch processing', {
+      totalItems: total,
+      batchSize: this.batchSize,
+    });
 
     context.span.setAttributes({
       'batch.total_items': total,
@@ -138,10 +142,11 @@ export abstract class BatchJob<
       const batchNumber = Math.floor(i / this.batchSize) + 1;
       const totalBatches = Math.ceil(total / this.batchSize);
 
-      context.logger.info(
-        `Processing batch ${batchNumber}/${totalBatches}`,
-        { batchNumber, totalBatches, batchSize: batch.length }
-      );
+      context.logger.info(`Processing batch ${batchNumber}/${totalBatches}`, {
+        batchNumber,
+        totalBatches,
+        batchSize: batch.length,
+      });
 
       try {
         await this.processBatch(batch, result, context);
@@ -161,15 +166,12 @@ export abstract class BatchJob<
     }
 
     // Log final results
-    context.logger.info(
-      'Batch processing complete',
-      {
-        total,
-        successful: result.successCount,
-        failed: result.failureCount,
-        successRate: (result.successCount / total) * 100,
-      }
-    );
+    context.logger.info('Batch processing complete', {
+      total,
+      successful: result.successCount,
+      failed: result.failureCount,
+      successRate: (result.successCount / total) * 100,
+    });
 
     context.span.setAttributes({
       'batch.success_count': result.successCount,
@@ -197,7 +199,7 @@ export abstract class BatchJob<
       // Control concurrency
       if (promises.length >= this.maxConcurrency) {
         await Promise.race(promises);
-        promises.splice(
+        void promises.splice(
           promises.findIndex((p) => p === promise),
           1
         );
@@ -226,13 +228,10 @@ export abstract class BatchJob<
       result.failed.push({ item, error: err });
       result.failureCount++;
 
-      context.logger.warn(
-        'Failed to process item',
-        {
-          item,
-          error: err.message,
-        }
-      );
+      context.logger.warn('Failed to process item', {
+        item,
+        error: err.message,
+      });
 
       if (this.errorStrategy === 'fail-fast') {
         throw err;
@@ -244,8 +243,8 @@ export abstract class BatchJob<
    * Hook called before batch processing starts
    */
   protected async beforeBatchProcessing(
-    items: TItem[],
-    context: JobContext<TMetadata>
+    _items: TItem[],
+    _context: JobContext<TMetadata>
   ): Promise<void> {
     // Override to add custom logic
   }
@@ -254,8 +253,8 @@ export abstract class BatchJob<
    * Hook called after batch processing completes
    */
   protected async afterBatchProcessing(
-    result: BatchResult<TItem, TResult>,
-    context: JobContext<TMetadata>
+    _result: BatchResult<TItem, TResult>,
+    _context: JobContext<TMetadata>
   ): Promise<void> {
     // Override to add custom logic
   }
@@ -264,9 +263,9 @@ export abstract class BatchJob<
    * Hook called when an item fails
    */
   protected async onItemError(
-    item: TItem,
-    error: Error,
-    context: JobContext<TMetadata>
+    _item: TItem,
+    _error: Error,
+    _context: JobContext<TMetadata>
   ): Promise<void> {
     // Override to add custom error handling
   }

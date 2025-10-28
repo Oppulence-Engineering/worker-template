@@ -4,7 +4,8 @@
  */
 
 import { config as loadEnv } from 'dotenv';
-import { AppConfigSchema, type AppConfig, buildDatabaseUrl } from './schema';
+
+import { AppConfigSchema, buildDatabaseUrl, type AppConfig } from './schema';
 
 // Load environment variables
 loadEnv();
@@ -44,13 +45,13 @@ function parseFloatValue(value: string | undefined, defaultValue: number): numbe
 export function loadConfig(): AppConfig {
   const env = process.env;
   const rawConfig = {
-    nodeEnv: env['NODE_ENV'] || 'development',
+    nodeEnv: env['NODE_ENV'] ?? 'development',
     database: {
-      host: env['DB_HOST'] || 'localhost',
+      host: env['DB_HOST'] ?? 'localhost',
       port: parseNumber(env['DB_PORT'], 5432),
-      database: env['DB_NAME'] || 'graphile_worker',
-      user: env['DB_USER'] || 'postgres',
-      password: env['DB_PASSWORD'] || 'postgres',
+      database: env['DB_NAME'] ?? 'graphile_worker',
+      user: env['DB_USER'] ?? 'postgres',
+      password: env['DB_PASSWORD'] ?? 'postgres',
       ssl: parseBoolean(env['DB_SSL'], false),
       maxConnections: parseNumber(env['DB_MAX_CONNECTIONS'], 10),
       idleTimeoutMillis: parseNumber(env['DB_IDLE_TIMEOUT_MS'], 30000),
@@ -60,18 +61,18 @@ export function loadConfig(): AppConfig {
       concurrency: parseNumber(env['WORKER_CONCURRENCY'], 5),
       pollInterval: parseNumber(env['WORKER_POLL_INTERVAL'], 1000),
       preparedStatements: parseBoolean(env['WORKER_PREPARED_STATEMENTS'], false),
-      schema: env['WORKER_SCHEMA'] || 'graphile_worker',
+      schema: env['WORKER_SCHEMA'] ?? 'graphile_worker',
       noHandleSignals: parseBoolean(env['WORKER_NO_HANDLE_SIGNALS'], false),
       forbiddenFlags: env['WORKER_FORBIDDEN_FLAGS']?.split(','),
     },
     observability: {
-      serviceName: process.env.SERVICE_NAME || 'graphile-worker-template',
-      serviceVersion: process.env.SERVICE_VERSION || '1.0.0',
-      environment: process.env.ENVIRONMENT || process.env.NODE_ENV || 'development',
+      serviceName: process.env.SERVICE_NAME ?? 'graphile-worker-template',
+      serviceVersion: process.env.SERVICE_VERSION ?? '1.0.0',
+      environment: process.env.ENVIRONMENT ?? process.env.NODE_ENV ?? 'development',
       metrics: {
         enabled: parseBoolean(process.env.METRICS_ENABLED, true),
         port: parseNumber(process.env.METRICS_PORT, 9090),
-        path: process.env.METRICS_PATH || '/metrics',
+        path: process.env.METRICS_PATH ?? '/metrics',
       },
       tracing: {
         enabled: parseBoolean(process.env.TRACING_ENABLED, true),
@@ -79,32 +80,33 @@ export function loadConfig(): AppConfig {
         sampleRate: parseFloatValue(process.env.TRACE_SAMPLE_RATE, 1.0),
       },
       logging: {
-        level: process.env.LOG_LEVEL || 'info',
+        level: process.env.LOG_LEVEL ?? 'info',
         pretty: parseBoolean(process.env.LOG_PRETTY, process.env.NODE_ENV === 'development'),
       },
     },
     healthCheck: {
       enabled: parseBoolean(process.env.HEALTH_CHECK_ENABLED, true),
       port: parseNumber(process.env.HEALTH_CHECK_PORT, 8080),
-      path: process.env.HEALTH_CHECK_PATH || '/health',
-      readinessPath: process.env.HEALTH_READINESS_PATH || '/health/ready',
-      livenessPath: process.env.HEALTH_LIVENESS_PATH || '/health/live',
+      path: process.env.HEALTH_CHECK_PATH ?? '/health',
+      readinessPath: process.env.HEALTH_READINESS_PATH ?? '/health/ready',
+      livenessPath: process.env.HEALTH_LIVENESS_PATH ?? '/health/live',
     },
     graphql: {
       enabled: parseBoolean(process.env.GRAPHQL_ENABLED, false),
       port: parseNumber(process.env.GRAPHQL_PORT, 5000),
-      path: process.env.GRAPHQL_PATH || '/graphql',
+      path: process.env.GRAPHQL_PATH ?? '/graphql',
       graphiql: parseBoolean(process.env.GRAPHQL_GRAPHIQL, true),
       watch: parseBoolean(process.env.GRAPHQL_WATCH, false),
       enhanceGraphiql: parseBoolean(process.env.GRAPHQL_ENHANCE_GRAPHIQL, true),
       enableQueryBatching: parseBoolean(process.env.GRAPHQL_ENABLE_QUERY_BATCHING, true),
-      legacyRelations: (process.env.GRAPHQL_LEGACY_RELATIONS as 'omit' | 'deprecated' | 'only') || 'omit',
+      legacyRelations:
+        (process.env.GRAPHQL_LEGACY_RELATIONS as 'omit' | 'deprecated' | 'only') ?? 'omit',
       jwtSecret: process.env.GRAPHQL_JWT_SECRET,
-      jwtTokenIdentifier: process.env.GRAPHQL_JWT_TOKEN_IDENTIFIER || 'app.jwt_token',
+      jwtTokenIdentifier: process.env.GRAPHQL_JWT_TOKEN_IDENTIFIER ?? 'app.jwt_token',
       enableIntrospection: parseBoolean(process.env.GRAPHQL_ENABLE_INTROSPECTION, true),
     },
     cors: {
-      origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+      origin: process.env.CORS_ORIGIN ?? 'http://localhost:3000',
       credentials: parseBoolean(process.env.CORS_CREDENTIALS, true),
       methods: process.env.CORS_METHODS?.split(','),
       allowedHeaders: process.env.CORS_ALLOWED_HEADERS?.split(','),
@@ -130,7 +132,7 @@ export function loadConfig(): AppConfig {
     return validatedConfig;
   } catch (error) {
     console.error('Configuration validation failed:', error);
-    throw new Error(`Invalid configuration: ${error}`);
+    throw new Error(`Invalid configuration: ${String(error)}`);
   }
 }
 
@@ -145,9 +147,7 @@ let configInstance: AppConfig | null = null;
  * @returns Application configuration
  */
 export function getConfig(): AppConfig {
-  if (!configInstance) {
-    configInstance = loadConfig();
-  }
+  configInstance ??= loadConfig();
   return configInstance;
 }
 
@@ -165,7 +165,7 @@ export function resetConfig(): void {
  * @returns PostgreSQL connection URL
  */
 export function getDatabaseUrl(config?: AppConfig): string {
-  const cfg = config || getConfig();
+  const cfg = config ?? getConfig();
   return buildDatabaseUrl(cfg.database);
 }
 
@@ -173,7 +173,7 @@ export function getDatabaseUrl(config?: AppConfig): string {
  * Check if running in development mode
  */
 export function isDevelopment(config?: AppConfig): boolean {
-  const cfg = config || getConfig();
+  const cfg = config ?? getConfig();
   return cfg.nodeEnv === 'development' || cfg.nodeEnv === 'test';
 }
 
@@ -181,7 +181,7 @@ export function isDevelopment(config?: AppConfig): boolean {
  * Check if running in production mode
  */
 export function isProduction(config?: AppConfig): boolean {
-  const cfg = config || getConfig();
+  const cfg = config ?? getConfig();
   return cfg.nodeEnv === 'production';
 }
 
@@ -189,7 +189,7 @@ export function isProduction(config?: AppConfig): boolean {
  * Check if running in test mode
  */
 export function isTest(config?: AppConfig): boolean {
-  const cfg = config || getConfig();
+  const cfg = config ?? getConfig();
   return cfg.nodeEnv === 'test';
 }
 

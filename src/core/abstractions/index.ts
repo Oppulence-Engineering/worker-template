@@ -4,8 +4,19 @@
  */
 
 export { BaseJob } from './BaseJob';
-export { BaseRepository, type IRepository, type QueryOptions, type TransactionCallback, type EntityId } from './BaseRepository';
-export { BaseService, ServiceError, type ServiceDependencies, type ServiceContext } from './BaseService';
+export {
+  BaseRepository,
+  type IRepository,
+  type QueryOptions,
+  type TransactionCallback,
+  type EntityId,
+} from './BaseRepository';
+export {
+  BaseService,
+  ServiceError,
+  type ServiceDependencies,
+  type ServiceContext,
+} from './BaseService';
 export {
   BaseMiddleware,
   MiddlewarePipeline,

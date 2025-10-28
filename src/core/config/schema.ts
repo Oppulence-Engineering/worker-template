@@ -101,10 +101,7 @@ export const HealthCheckConfigSchema = z.object({
   enabled: z.boolean().default(true).describe('Enable health check server'),
   port: z.number().int().min(1).max(65535).default(8080).describe('Health check server port'),
   path: z.string().default('/health').describe('Health check endpoint path'),
-  readinessPath: z
-    .string()
-    .default('/health/ready')
-    .describe('Readiness probe endpoint path'),
+  readinessPath: z.string().default('/health/ready').describe('Readiness probe endpoint path'),
   livenessPath: z.string().default('/health/live').describe('Liveness probe endpoint path'),
 });
 
@@ -119,16 +116,16 @@ export const GraphQLConfigSchema = z.object({
   watch: z.boolean().default(false).describe('Watch database for schema changes'),
   enhanceGraphiql: z.boolean().default(true).describe('Enhance GraphiQL with additional features'),
   enableQueryBatching: z.boolean().default(true).describe('Enable query batching'),
-  legacyRelations: z.enum(['omit', 'deprecated', 'only']).default('omit').describe('Legacy relations mode'),
+  legacyRelations: z
+    .enum(['omit', 'deprecated', 'only'])
+    .default('omit')
+    .describe('Legacy relations mode'),
   jwtSecret: z.string().optional().describe('JWT secret for authentication'),
   jwtTokenIdentifier: z
     .string()
     .default('app.jwt_token')
     .describe('PostgreSQL type identifier for JWT token'),
-  enableIntrospection: z
-    .boolean()
-    .default(true)
-    .describe('Enable GraphQL introspection'),
+  enableIntrospection: z.boolean().default(true).describe('Enable GraphQL introspection'),
 });
 
 /**
@@ -164,6 +161,14 @@ export const FeatureFlagsSchema = z.object({
   enableGraphiQL: z.boolean().default(true).describe('Enable GraphiQL interface'),
   enableIntrospection: z.boolean().default(true).describe('Enable GraphQL introspection'),
   enableDebugMode: z.boolean().default(false).describe('Enable debug mode'),
+  provider: z
+    .enum(['none', 'launchdarkly', 'unleash'])
+    .default('none')
+    .describe('Feature flag provider'),
+  staticFlags: z
+    .record(z.string(), z.boolean())
+    .default({})
+    .describe('Static flag overrides when provider is none'),
 });
 
 /**
@@ -213,9 +218,7 @@ export function buildDatabaseUrl(config: DatabaseConfig): string {
 /**
  * Validate partial configuration against schema
  */
-export function validatePartialConfig<T extends z.ZodType>(
-  schema: T,
-  data: unknown
-): z.infer<T> {
-  return schema.parse(data);
+export function validatePartialConfig<T extends z.ZodType>(schema: T, data: unknown): z.infer<T> {
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+  return schema.parse(data) as z.infer<T>;
 }

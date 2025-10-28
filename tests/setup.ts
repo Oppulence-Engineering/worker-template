@@ -3,14 +3,28 @@
  * @module tests/setup
  */
 
+import { randomUUID } from 'node:crypto';
 import type { Pool } from 'pg';
+import { DataType } from 'pg-mem';
 import type { PostgresContainerManager } from './testcontainers/postgres';
+
+type PgMemPool = Pool & { end: () => Promise<void> };
 
 /**
  * Helper to create test logger
  */
-export function createTestLogger() {
-  return {
+type TestLogger = {
+  trace: (...args: unknown[]) => void;
+  debug: (...args: unknown[]) => void;
+  info: (...args: unknown[]) => void;
+  warn: (...args: unknown[]) => void;
+  error: (...args: unknown[]) => void;
+  fatal: (...args: unknown[]) => void;
+  child: () => TestLogger;
+};
+
+export function createTestLogger(): TestLogger {
+  const logger: TestLogger = {
     trace: () => {},
     debug: () => {},
     info: () => {},
@@ -18,20 +32,33 @@ export function createTestLogger() {
     error: () => {},
     fatal: () => {},
     child: () => createTestLogger(),
-  } as any;
+  };
+
+  return logger;
 }
 
 /**
  * Mock database pool (for unit tests)
  */
-export const mockPool = {
+interface MockPoolClient {
+  query: (queryText: string, values?: unknown[]) => Promise<{ rows: unknown[]; rowCount: number }>;
+  release: () => void;
+}
+
+interface MockPool {
+  query: (queryText: string, values?: unknown[]) => Promise<{ rows: unknown[]; rowCount: number }>;
+  connect: () => Promise<MockPoolClient>;
+  end: () => Promise<void>;
+}
+
+export const mockPool: MockPool = {
   query: async () => ({ rows: [], rowCount: 0 }),
   connect: async () => ({
     query: async () => ({ rows: [], rowCount: 0 }),
     release: () => {},
   }),
   end: async () => {},
-} as any;
+};
 
 /**
  * Global test container instances (for integration tests)
@@ -39,6 +66,9 @@ export const mockPool = {
  */
 export let postgresContainer: PostgresContainerManager | null = null;
 export let testPool: Pool | null = null;
+
+let pgMemPool: PgMemPool | null = null;
+let usingTestcontainers = false;
 
 /**
  * Initialize PostgreSQL testcontainer for integration tests
@@ -57,18 +87,41 @@ export let testPool: Pool | null = null;
  * ```
  */
 export async function initializePostgresContainer(): Promise<void> {
-  const { createPostgresContainer } = await import('./testcontainers/postgres');
+  if (testPool) {
+    return;
+  }
 
-  postgresContainer = createPostgresContainer({
-    config: {
-      database: 'test_db',
-      username: 'test_user',
-      password: 'test_pass',
-    },
+  usingTestcontainers = process.env.USE_TESTCONTAINERS === 'true';
+
+  if (usingTestcontainers) {
+    const { createPostgresContainer } = await import('./testcontainers/postgres');
+
+    postgresContainer = createPostgresContainer({
+      config: {
+        database: 'test_db',
+        username: 'test_user',
+        password: 'test_pass',
+      },
+    });
+
+    await postgresContainer.start();
+    testPool = postgresContainer.createPool();
+    return;
+  }
+
+  const { newDb } = await import('pg-mem');
+  const db = newDb({ autoCreateForeignKeyIndices: true });
+
+  db.public.registerFunction({
+    name: 'gen_random_uuid',
+    returns: DataType.uuid,
+    implementation: () => randomUUID(),
+    impure: true,
   });
 
-  await postgresContainer.start();
-  testPool = postgresContainer.createPool();
+  const adapter = db.adapters.createPg();
+  pgMemPool = new adapter.Pool() as unknown as PgMemPool;
+  testPool = pgMemPool;
 }
 
 /**
@@ -80,9 +133,14 @@ export async function cleanupTestContainers(): Promise<void> {
     testPool = null;
   }
 
-  if (postgresContainer) {
+  if (usingTestcontainers && postgresContainer) {
     await postgresContainer.stop();
     postgresContainer = null;
   }
-}
 
+  if (pgMemPool) {
+    pgMemPool = null;
+  }
+
+  usingTestcontainers = false;
+}

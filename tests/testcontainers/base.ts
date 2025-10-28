@@ -29,7 +29,7 @@ export interface ContainerConfig<TConfig = Record<string, unknown>> {
  */
 export interface IContainerInstance<
   TContainer extends StartedTestContainer = StartedTestContainer,
-  TConnection = unknown
+  TConnection = unknown,
 > {
   /** Started container instance */
   readonly container: TContainer;
@@ -77,7 +77,7 @@ export interface IContainerInstance<
 export abstract class BaseContainerManager<
   TContainer extends StartedTestContainer = StartedTestContainer,
   TConnection = unknown,
-  TConfig = Record<string, unknown>
+  TConfig = Record<string, unknown>,
 > implements IContainerInstance<TContainer, TConnection>
 {
   protected _container: TContainer | null = null;
@@ -227,7 +227,7 @@ export abstract class BaseContainerManager<
  * ```
  */
 export class ContainerRegistry<
-  TContainers extends Record<string, IContainerInstance> = Record<string, IContainerInstance>
+  TContainers extends Record<string, IContainerInstance> = Record<string, IContainerInstance>,
 > {
   private containers = new Map<keyof TContainers, IContainerInstance>();
 
@@ -283,9 +283,7 @@ export class ContainerRegistry<
   async stopAll(): Promise<void> {
     console.log(`Stopping ${this.containers.size} containers...`);
 
-    const stopPromises = Array.from(this.containers.values()).map((container) =>
-      container.stop()
-    );
+    const stopPromises = Array.from(this.containers.values()).map((container) => container.stop());
 
     await Promise.all(stopPromises);
     this.containers.clear();
@@ -311,7 +309,7 @@ export class ContainerRegistry<
  * Helper to create a container registry with type inference
  */
 export function createContainerRegistry<
-  TContainers extends Record<string, IContainerInstance>
+  TContainers extends Record<string, IContainerInstance>,
 >(): ContainerRegistry<TContainers> {
   return new ContainerRegistry<TContainers>();
 }

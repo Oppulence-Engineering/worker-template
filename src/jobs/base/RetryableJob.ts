@@ -3,15 +3,16 @@
  * @module jobs/base/RetryableJob
  */
 
-import type { z } from 'zod';
 
 import { BaseJob } from '../../core/abstractions/BaseJob';
+
 import type {
   JobContext,
   RetryStrategy,
   ExponentialBackoffConfig,
   LinearBackoffConfig,
 } from '../../core/types';
+import type { z } from 'zod';
 
 /**
  * Exponential backoff retry strategy
@@ -32,7 +33,7 @@ export class ExponentialBackoffStrategy implements RetryStrategy<ExponentialBack
     return Math.max(0, Math.floor(delay));
   }
 
-  shouldRetry(attemptNumber: number, maxAttempts: number, error: Error): boolean {
+  shouldRetry(attemptNumber: number, maxAttempts: number, _error: Error): boolean {
     return attemptNumber < maxAttempts;
   }
 }
@@ -49,7 +50,7 @@ export class LinearBackoffStrategy implements RetryStrategy<LinearBackoffConfig>
     return Math.max(0, Math.floor(delay));
   }
 
-  shouldRetry(attemptNumber: number, maxAttempts: number, error: Error): boolean {
+  shouldRetry(attemptNumber: number, maxAttempts: number, _error: Error): boolean {
     return attemptNumber < maxAttempts;
   }
 }
@@ -64,7 +65,7 @@ export class ConstantBackoffStrategy implements RetryStrategy<{ delay: number }>
     return config.delay;
   }
 
-  shouldRetry(attemptNumber: number, maxAttempts: number, error: Error): boolean {
+  shouldRetry(attemptNumber: number, maxAttempts: number, _error: Error): boolean {
     return attemptNumber < maxAttempts;
   }
 }
@@ -105,7 +106,7 @@ export abstract class RetryableJob<
   TPayload extends z.ZodType,
   TResult = void,
   TStrategy = ExponentialBackoffConfig,
-  TMetadata = Record<string, unknown>
+  TMetadata = Record<string, unknown>,
 > extends BaseJob<TPayload, TResult, TMetadata> {
   /**
    * Retry strategy to use
@@ -122,25 +123,19 @@ export abstract class RetryableJob<
   /**
    * Override onError to implement retry logic with backoff
    */
-  override async onError(
-    error: Error,
-    context: JobContext<TMetadata>
-  ): Promise<void> {
+  override async onError(error: Error, context: JobContext<TMetadata>): Promise<void> {
     await super.onError(error, context);
 
     // Check if retry should occur
     if (this.retryStrategy.shouldRetry(context.attemptNumber, context.maxAttempts, error)) {
       const delay = this.retryStrategy.calculateDelay(context.attemptNumber, this.strategyConfig);
 
-      context.logger.info(
-        'Job will be retried with backoff',
-        {
-          attemptNumber: context.attemptNumber,
-          maxAttempts: context.maxAttempts,
-          delay,
-          strategy: this.retryStrategy.name,
-        }
-      );
+      context.logger.info('Job will be retried with backoff', {
+        attemptNumber: context.attemptNumber,
+        maxAttempts: context.maxAttempts,
+        delay,
+        strategy: this.retryStrategy.name,
+      });
 
       context.span.setAttributes({
         'job.retry.delay_ms': delay,
@@ -156,7 +151,7 @@ export abstract class RetryableJob<
    * @param error - Error that occurred
    * @returns Whether error is retryable
    */
-  protected isRetryableError(error: Error): boolean {
+  protected isRetryableError(_error: Error): boolean {
     // By default, all errors are retryable
     // Override this method to implement custom logic
     // For example, don't retry validation errors
@@ -180,7 +175,7 @@ export abstract class RetryableJob<
 export abstract class ExponentialRetryJob<
   TPayload extends z.ZodType,
   TResult = void,
-  TMetadata = Record<string, unknown>
+  TMetadata = Record<string, unknown>,
 > extends RetryableJob<TPayload, TResult, ExponentialBackoffConfig, TMetadata> {
   protected readonly retryStrategy = new ExponentialBackoffStrategy();
   protected readonly strategyConfig: ExponentialBackoffConfig = {
@@ -197,7 +192,7 @@ export abstract class ExponentialRetryJob<
 export abstract class LinearRetryJob<
   TPayload extends z.ZodType,
   TResult = void,
-  TMetadata = Record<string, unknown>
+  TMetadata = Record<string, unknown>,
 > extends RetryableJob<TPayload, TResult, LinearBackoffConfig, TMetadata> {
   protected readonly retryStrategy = new LinearBackoffStrategy();
   protected readonly strategyConfig: LinearBackoffConfig = {

@@ -3,11 +3,14 @@
  * @module core/instrumentation/metrics
  */
 
-import { MeterProvider, PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
+import { metrics, type Counter, type Histogram, type Meter } from '@opentelemetry/api';
 import { PrometheusExporter } from '@opentelemetry/exporter-prometheus';
 import { Resource } from '@opentelemetry/resources';
-import { SEMRESATTRS_SERVICE_NAME, SEMRESATTRS_SERVICE_VERSION } from '@opentelemetry/semantic-conventions';
-import { metrics, type Counter, type Histogram, type Meter } from '@opentelemetry/api';
+import { MeterProvider } from '@opentelemetry/sdk-metrics';
+import {
+  SEMRESATTRS_SERVICE_NAME,
+  SEMRESATTRS_SERVICE_VERSION,
+} from '@opentelemetry/semantic-conventions';
 
 import type { ObservabilityConfig } from '../config/schema';
 
@@ -38,6 +41,7 @@ export function setupMetrics(config: ObservabilityConfig): PrometheusExporter | 
   // Note: Type assertion needed due to version incompatibility with selectCardinalityLimit
   const meterProvider = new MeterProvider({
     resource,
+    // eslint-disable-next-line @typescript-eslint/consistent-type-imports
     readers: [prometheusExporter] as unknown as import('@opentelemetry/sdk-metrics').MetricReader[],
   });
 
@@ -69,7 +73,7 @@ export class JobMetrics {
   private readonly jobRetries: Counter;
   private readonly activeJobs: Counter;
 
-  constructor(serviceName: string) {
+  constructor(_serviceName: string) {
     this.meter = getMeter('graphile-worker', '1.0.0');
 
     // Jobs processed counter
@@ -238,16 +242,164 @@ export class HttpMetrics {
 }
 
 /**
+ * Scheduler metrics collector
+ */
+export class SchedulerMetrics {
+  private readonly meter: Meter;
+  private readonly executions: Counter;
+  private readonly duration: Histogram;
+  private readonly failures: Counter;
+  private readonly reconciliation: Counter;
+  private readonly validationFailures: Counter;
+  private readonly customCounters = new Map<string, Counter>();
+
+  constructor(_serviceName: string) {
+    this.meter = getMeter('scheduler', '1.0.0');
+
+    this.executions = this.meter.createCounter('scheduler_executions_total', {
+      description: 'Total number of scheduled job executions',
+      unit: '1',
+    });
+
+    this.duration = this.meter.createHistogram('scheduler_execution_duration_seconds', {
+      description: 'Scheduled job execution duration',
+      unit: 's',
+    });
+
+    this.failures = this.meter.createCounter('scheduler_execution_failures_total', {
+      description: 'Total number of scheduled job execution failures',
+      unit: '1',
+    });
+
+    this.reconciliation = this.meter.createCounter('scheduler_reconciliation_events_total', {
+      description: 'Number of reconciliation events executed',
+      unit: '1',
+    });
+
+    this.validationFailures = this.meter.createCounter('scheduler_validation_failures_total', {
+      description: 'Number of schedule payload validation failures',
+      unit: '1',
+    });
+  }
+
+  recordExecution(
+    jobName: string,
+    durationMs: number,
+    success: boolean,
+    backfilled: boolean
+  ): void {
+    const labels = { job_name: jobName, outcome: success ? 'success' : 'failure', backfilled };
+    this.executions.add(1, labels);
+    this.duration.record(durationMs / 1000, labels);
+
+    if (!success) {
+      this.failures.add(1, { job_name: jobName, backfilled });
+    }
+  }
+
+  recordReconciliation(action: 'inserted' | 'stale', count: number): void {
+    if (count > 0) {
+      this.reconciliation.add(count, { action });
+    }
+  }
+
+  recordValidationFailure(jobName: string, reason: string): void {
+    this.validationFailures.add(1, { job_name: jobName, reason });
+  }
+
+  recordCustomMetrics(jobName: string, metrics: Record<string, number>): void {
+    for (const [key, value] of Object.entries(metrics)) {
+      if (!Number.isFinite(value)) {
+        continue;
+      }
+
+      this.getCustomCounter(key).add(value, { job_name: jobName });
+    }
+  }
+
+  private getCustomCounter(key: string): Counter {
+    const metricName = this.toMetricName(key);
+    const existing = this.customCounters.get(metricName);
+    if (existing) {
+      return existing;
+    }
+
+    const counter = this.meter.createCounter(metricName, {
+      description: `Custom metric emitted by scheduled jobs (${metricName})`,
+      unit: '1',
+    });
+    this.customCounters.set(metricName, counter);
+    return counter;
+  }
+
+  private toMetricName(key: string): string {
+    return `scheduler_custom_${key.replace(/[^a-zA-Z0-9]+/g, '_').toLowerCase()}`;
+  }
+}
+
+/**
+ * Workflow metrics collector
+ */
+export class WorkflowMetrics {
+  private readonly meter: Meter;
+  private readonly executions: Counter;
+  private readonly duration: Histogram;
+  private readonly compensation: Counter;
+  private readonly stepExecutions: Counter;
+
+  constructor(_serviceName: string) {
+    this.meter = getMeter('workflow', '1.0.0');
+
+    this.executions = this.meter.createCounter('workflow_executions_total', {
+      description: 'Total number of workflow executions',
+      unit: '1',
+    });
+
+    this.duration = this.meter.createHistogram('workflow_duration_seconds', {
+      description: 'Workflow execution duration',
+      unit: 's',
+    });
+
+    this.compensation = this.meter.createCounter('workflow_compensation_total', {
+      description: 'Total number of workflow compensation steps executed',
+      unit: '1',
+    });
+
+    this.stepExecutions = this.meter.createCounter('workflow_step_total', {
+      description: 'Total number of workflow steps executed',
+      unit: '1',
+    });
+  }
+
+  recordWorkflowCompletion(jobName: string, durationMs: number, outcome: 'success' | 'failure'): void {
+    this.executions.add(1, { job_name: jobName, outcome });
+    this.duration.record(durationMs / 1000, { job_name: jobName, outcome });
+  }
+
+  recordStep(jobName: string, stepId: string, outcome: 'success' | 'failure'): void {
+    this.stepExecutions.add(1, { job_name: jobName, step_id: stepId, outcome });
+  }
+
+  recordCompensation(jobName: string, stepId: string): void {
+    this.compensation.add(1, { job_name: jobName, step_id: stepId });
+  }
+}
+
+/**
  * Create all metrics collectors
  */
 export function createMetricsCollectors(serviceName: string): {
   jobMetrics: JobMetrics;
   dbMetrics: DatabaseMetrics;
   httpMetrics: HttpMetrics;
+  schedulerMetrics: SchedulerMetrics;
+  workflowMetrics: WorkflowMetrics;
 } {
   return {
     jobMetrics: new JobMetrics(serviceName),
     dbMetrics: new DatabaseMetrics(),
     httpMetrics: new HttpMetrics(),
+    schedulerMetrics: new SchedulerMetrics(serviceName),
+    workflowMetrics: new WorkflowMetrics(serviceName),
   };
 }

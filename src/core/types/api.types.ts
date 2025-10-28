@@ -3,19 +3,12 @@
  * @module core/types/api
  */
 
+import type { Brand, Prettify, AsyncFunction, Result, JsonObject, Nullable } from './common.types';
 import type { IncomingMessage, ServerResponse } from 'http';
 import type { Pool, PoolClient } from 'pg';
 import type { Logger } from 'pino';
 import type { z } from 'zod';
 
-import type {
-  Brand,
-  Prettify,
-  AsyncFunction,
-  Result,
-  JsonObject,
-  Nullable,
-} from './common.types';
 
 /**
  * User ID - branded string for type safety
@@ -78,7 +71,7 @@ export interface TypedRequest<
   TBody = unknown,
   TParams = Record<string, string>,
   TQuery = Record<string, string>,
-  THeaders extends HttpHeaders = HttpHeaders
+  THeaders extends HttpHeaders = HttpHeaders,
 > extends IncomingMessage {
   /** Request body (parsed) */
   body: TBody;
@@ -205,10 +198,7 @@ export interface IUser<TRoles extends readonly UserRole[] = readonly UserRole[]>
  * Authentication result type
  * @template TUser - User type
  */
-export type AuthResult<TUser> = Result<
-  { user: TUser; token: JwtToken },
-  AuthError
->;
+export type AuthResult<TUser> = Result<{ user: TUser; token: JwtToken }, AuthError>;
 
 /**
  * Authentication error types
@@ -240,13 +230,8 @@ export type GraphQLResolver<
   TSource = unknown,
   TArgs = Record<string, unknown>,
   TContext = GraphQLContext,
-  TReturn = unknown
-> = (
-  source: TSource,
-  args: TArgs,
-  context: TContext,
-  info: unknown
-) => Promise<TReturn> | TReturn;
+  TReturn = unknown,
+> = (source: TSource, args: TArgs, context: TContext, info: unknown) => Promise<TReturn> | TReturn;
 
 /**
  * GraphQL field resolver map
@@ -264,7 +249,7 @@ export type GraphQLFieldResolvers<TSource = unknown, TContext = GraphQLContext> 
  */
 export type GraphQLResolverMap<
   TResolvers extends Record<string, GraphQLFieldResolvers>,
-  TContext = GraphQLContext
+  _TContext = GraphQLContext,
 > = {
   [K in keyof TResolvers]: TResolvers[K];
 };
@@ -273,7 +258,7 @@ export type GraphQLResolverMap<
  * PostGraphile plugin interface
  * @template TContext - GraphQL context type
  */
-export interface PostGraphilePlugin<TContext = GraphQLContext> {
+export interface PostGraphilePlugin<_TContext = GraphQLContext> {
   /** Plugin name */
   name: string;
   /** Plugin version */
@@ -399,7 +384,7 @@ export interface Filter<TField extends string = string, TValue = unknown> {
  */
 export type RouteHandler<
   TRequest extends TypedRequest = TypedRequest,
-  TResponse extends TypedResponse = TypedResponse
+  TResponse extends TypedResponse = TypedResponse,
 > = AsyncFunction<[TRequest, TResponse], void>;
 
 /**
@@ -410,7 +395,7 @@ export type RouteHandler<
 export type Middleware<
   TRequest extends TypedRequest = TypedRequest,
   TResponse extends TypedResponse = TypedResponse,
-  TNext = () => Promise<void>
+  TNext = () => Promise<void>,
 > = AsyncFunction<[TRequest, TResponse, TNext], void>;
 
 /**
@@ -418,10 +403,7 @@ export type Middleware<
  * @template TRequest - Request type
  * @template TResponse - Response body type
  */
-export interface ApiEndpoint<
-  TRequest extends TypedRequest = TypedRequest,
-  TResponse = unknown
-> {
+export interface ApiEndpoint<TRequest extends TypedRequest = TypedRequest, TResponse = unknown> {
   /** HTTP method */
   method: HttpMethod;
   /** Endpoint path */

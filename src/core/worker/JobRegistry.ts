@@ -3,10 +3,14 @@
  * @module core/worker/JobRegistry
  */
 
+import type { FeatureFlagService } from '../featureFlags/FeatureFlagService';
+import type { IJob, JobName } from '../types';
 import type { TaskList } from 'graphile-worker';
 import type { Logger } from 'pino';
+import type { z } from 'zod';
 
-import type { IJob, JobName } from '../types';
+
+type RegisteredJob = IJob<z.ZodTypeAny, unknown, Record<string, unknown>>;
 
 /**
  * Job registry for managing and accessing all registered jobs
@@ -23,11 +27,12 @@ import type { IJob, JobName } from '../types';
  * const emailJob = registry.getJob('send-email' as JobName);
  * ```
  */
-export class JobRegistry<TJobMap extends Record<string, IJob> = Record<string, IJob>> {
+export class JobRegistry<_TJobMap extends Record<string, IJob> = Record<string, IJob>> {
   /**
    * Map of job name to job instance
    */
-  private readonly jobs = new Map<JobName, IJob>();
+  private readonly jobs = new Map<JobName, RegisteredJob>();
+  private featureFlagService?: FeatureFlagService;
 
   /**
    * Logger instance
@@ -49,11 +54,15 @@ export class JobRegistry<TJobMap extends Record<string, IJob> = Record<string, I
    * @param job - Job instance to register
    * @throws {Error} If job with same name already registered
    */
-  register<TJob extends IJob>(job: TJob): this {
+  register<TJob extends RegisteredJob>(job: TJob): this {
     const jobName = job.jobName;
 
     if (this.jobs.has(jobName)) {
       throw new Error(`Job '${jobName}' is already registered`);
+    }
+
+    if (this.featureFlagService && typeof job.setFeatureFlagService === 'function') {
+      job.setFeatureFlagService(this.featureFlagService);
     }
 
     this.jobs.set(jobName, job);
@@ -68,10 +77,20 @@ export class JobRegistry<TJobMap extends Record<string, IJob> = Record<string, I
    *
    * @param jobs - Array of job instances
    */
-  registerMany(jobs: IJob[]): this {
+  registerMany(jobs: RegisteredJob[]): this {
     for (const job of jobs) {
       this.register(job);
     }
+    return this;
+  }
+
+  setFeatureFlagService(service: FeatureFlagService): this {
+    this.featureFlagService = service;
+
+    for (const job of this.jobs.values()) {
+      job.setFeatureFlagService?.(service);
+    }
+
     return this;
   }
 
@@ -81,7 +100,7 @@ export class JobRegistry<TJobMap extends Record<string, IJob> = Record<string, I
    * @param name - Job name
    * @returns Job instance or undefined
    */
-  getJob(name: JobName): IJob | undefined {
+  getJob(name: JobName): RegisteredJob | undefined {
     return this.jobs.get(name);
   }
 
@@ -100,7 +119,7 @@ export class JobRegistry<TJobMap extends Record<string, IJob> = Record<string, I
    *
    * @returns Array of all job instances
    */
-  getAllJobs(): IJob[] {
+  getAllJobs(): RegisteredJob[] {
     return Array.from(this.jobs.values());
   }
 
@@ -185,7 +204,7 @@ export class JobRegistry<TJobMap extends Record<string, IJob> = Record<string, I
  * @param logger - Optional logger
  * @returns Configured job registry
  */
-export function createJobRegistry(jobs: IJob[], logger?: Logger): JobRegistry {
+export function createJobRegistry(jobs: RegisteredJob[], logger?: Logger): JobRegistry {
   const registry = new JobRegistry();
 
   if (logger) {

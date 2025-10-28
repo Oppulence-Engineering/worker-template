@@ -4,7 +4,11 @@
  */
 
 import { describe, it, expect, beforeEach } from 'bun:test';
-import { AppConfigSchema, DatabaseConfigSchema, WorkerConfigSchema } from '../../src/core/config/schema';
+import {
+  AppConfigSchema,
+  DatabaseConfigSchema,
+  WorkerConfigSchema,
+} from '../../src/core/config/schema';
 
 describe('unit: Configuration Schema Validation', () => {
   describe('DatabaseConfigSchema', () => {

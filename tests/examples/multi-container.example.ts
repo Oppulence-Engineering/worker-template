@@ -38,20 +38,26 @@ describeExample('example: Multi-container Integration', () => {
     console.log('Starting multi-container environment...');
 
     // Register containers
-    registry.register('postgres', createPostgresContainer({
-      config: {
-        database: 'integration_test',
-        username: 'test_user',
-        password: 'test_pass',
-      },
-    }));
+    registry.register(
+      'postgres',
+      createPostgresContainer({
+        config: {
+          database: 'integration_test',
+          username: 'test_user',
+          password: 'test_pass',
+        },
+      })
+    );
 
-    registry.register('redis', createRedisContainer({
-      config: {
-        password: 'redis_secret',
-        maxMemory: '128mb',
-      },
-    }));
+    registry.register(
+      'redis',
+      createRedisContainer({
+        config: {
+          password: 'redis_secret',
+          maxMemory: '128mb',
+        },
+      })
+    );
 
     // Start all containers in parallel
     await registry.startAll();
@@ -154,10 +160,10 @@ describeExample('example: Multi-container Integration', () => {
     await redis.executeCommand(['SET', cacheKey, JSON.stringify(result.rows[0])]);
 
     // Update user in database
-    await pgPool.query(
-      'UPDATE users SET email = $1 WHERE id = $2',
-      ['newemail@example.com', userId]
-    );
+    await pgPool.query('UPDATE users SET email = $1 WHERE id = $2', [
+      'newemail@example.com',
+      userId,
+    ]);
 
     // Invalidate cache
     await redis.executeCommand(['DEL', cacheKey]);

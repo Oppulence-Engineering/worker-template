@@ -62,8 +62,11 @@ export class PostgresContainerManager extends BaseContainerManager<
    * Start PostgreSQL container
    */
   protected async startContainer(): Promise<StartedPostgreSqlContainer> {
-    const { database = 'test_db', username = 'test_user', password = 'test_pass' } =
-      this.config.config || {};
+    const {
+      database = 'test_db',
+      username = 'test_user',
+      password = 'test_pass',
+    } = this.config.config || {};
 
     let container = new PostgreSqlContainer(this.config.image)
       .withDatabase(database)

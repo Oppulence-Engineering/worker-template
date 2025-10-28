@@ -1,13 +1,17 @@
 /**
  * @fileoverview Base job abstract class with extensive generics and lifecycle hooks
  * @module core/abstractions/BaseJob
+ *
+ * Note: Lifecycle hooks are intentionally async to allow subclasses to use await,
+ * even if the base implementation doesn't await anything.
  */
 
-import type { Task, JobHelpers } from 'graphile-worker';
-import { trace, type Span } from '@opentelemetry/api';
-import type { Logger } from 'pino';
-import { z, type ZodError } from 'zod';
+/* eslint-disable @typescript-eslint/require-await */
 
+import { trace, type Span } from '@opentelemetry/api';
+import { z } from 'zod';
+
+import type { FeatureFlagService } from '../featureFlags/FeatureFlagService';
 import type {
   JobConfig,
   JobContext,
@@ -18,6 +22,7 @@ import type {
   IJob,
   JobError,
 } from '../types';
+import type { Task, JobHelpers } from 'graphile-worker';
 
 /**
  * Abstract base class for all jobs with full generic type safety
@@ -48,7 +53,7 @@ import type {
 export abstract class BaseJob<
     TPayload extends z.ZodType,
     TResult = void,
-    TMetadata = Record<string, unknown>
+    TMetadata = Record<string, unknown>,
   >
   implements IJob<TPayload, TResult, TMetadata>, JobLifecycleHooks<TPayload, TResult, TMetadata>
 {
@@ -74,6 +79,7 @@ export abstract class BaseJob<
    * Tracer instance for this job
    */
   private readonly tracer = trace.getTracer('graphile-worker');
+  private featureFlagService?: FeatureFlagService;
 
   /**
    * Main execution method - must be implemented by subclasses
@@ -84,6 +90,10 @@ export abstract class BaseJob<
    */
   abstract execute(payload: z.infer<TPayload>, context: JobContext<TMetadata>): Promise<TResult>;
 
+  setFeatureFlagService(service: FeatureFlagService | undefined): void {
+    this.featureFlagService = service;
+  }
+
   /**
    * Validate job payload against schema
    *
@@ -93,7 +103,8 @@ export abstract class BaseJob<
    */
   validate(payload: unknown): z.infer<TPayload> {
     try {
-      return this.schema.parse(payload);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+      return this.schema.parse(payload) as z.infer<TPayload>;
     } catch (error) {
       if (error instanceof z.ZodError) {
         const formattedErrors = error.errors.map((err) => ({
@@ -101,9 +112,7 @@ export abstract class BaseJob<
           message: err.message,
           code: err.code,
         }));
-        throw new Error(
-          `Payload validation failed: ${JSON.stringify(formattedErrors, null, 2)}`
-        );
+        throw new Error(`Payload validation failed: ${JSON.stringify(formattedErrors, null, 2)}`);
       }
       throw error;
     }
@@ -116,19 +125,13 @@ export abstract class BaseJob<
    * @param payload - Validated payload
    * @param context - Job context
    */
-  async beforeExecute(
-    payload: z.infer<TPayload>,
-    context: JobContext<TMetadata>
-  ): Promise<void> {
-    context.logger.info(
-      `Starting job: ${this.jobName}`,
-      {
-        jobName: this.jobName,
-        jobId: context.jobId,
-        attemptNumber: context.attemptNumber,
-        payload,
-      }
-    );
+  async beforeExecute(payload: z.infer<TPayload>, context: JobContext<TMetadata>): Promise<void> {
+    context.logger.info(`Starting job: ${this.jobName}`, {
+      jobName: this.jobName,
+      jobId: context.jobId,
+      attemptNumber: context.attemptNumber,
+      payload,
+    });
 
     // Set span attributes
     context.span.setAttributes({
@@ -146,19 +149,13 @@ export abstract class BaseJob<
    * @param result - Execution result
    * @param context - Job context
    */
-  async afterExecute(
-    result: TResult,
-    context: JobContext<TMetadata>
-  ): Promise<void> {
-    context.logger.info(
-      `Completed job: ${this.jobName}`,
-      {
-        jobName: this.jobName,
-        jobId: context.jobId,
-        result,
-        duration: Date.now() - context.startedAt.getTime(),
-      }
-    );
+  async afterExecute(result: TResult, context: JobContext<TMetadata>): Promise<void> {
+    context.logger.info(`Completed job: ${this.jobName}`, {
+      jobName: this.jobName,
+      jobId: context.jobId,
+      result,
+      duration: Date.now() - context.startedAt.getTime(),
+    });
 
     context.span.setAttributes({
       'job.status': 'completed',
@@ -185,17 +182,14 @@ export abstract class BaseJob<
       },
     });
 
-    context.logger.error(
-      `Job failed: ${this.jobName}`,
-      {
-        error: jobError,
-        jobName: this.jobName,
-        jobId: context.jobId,
-        attemptNumber: context.attemptNumber,
-        maxAttempts: context.maxAttempts,
-        stack: error.stack,
-      }
-    );
+    context.logger.error(`Job failed: ${this.jobName}`, {
+      error: jobError,
+      jobName: this.jobName,
+      jobId: context.jobId,
+      attemptNumber: context.attemptNumber,
+      maxAttempts: context.maxAttempts,
+      stack: error.stack,
+    });
 
     context.span.recordException(error);
     context.span.setAttributes({
@@ -218,16 +212,13 @@ export abstract class BaseJob<
     attemptNumber: number,
     context: JobContext<TMetadata>
   ): Promise<void> {
-    context.logger.warn(
-      `Retrying job: ${this.jobName}`,
-      {
-        jobName: this.jobName,
-        jobId: context.jobId,
-        attemptNumber,
-        maxAttempts: context.maxAttempts,
-        error: error.message,
-      }
-    );
+    context.logger.warn(`Retrying job: ${this.jobName}`, {
+      jobName: this.jobName,
+      jobId: context.jobId,
+      attemptNumber,
+      maxAttempts: context.maxAttempts,
+      error: error.message,
+    });
   }
 
   /**
@@ -237,19 +228,13 @@ export abstract class BaseJob<
    * @param error - Final error
    * @param context - Job context
    */
-  async onMaxAttemptsReached(
-    error: Error,
-    context: JobContext<TMetadata>
-  ): Promise<void> {
-    context.logger.error(
-      `Job max attempts reached: ${this.jobName}`,
-      {
-        jobName: this.jobName,
-        jobId: context.jobId,
-        error: error.message,
-        stack: error.stack,
-      }
-    );
+  async onMaxAttemptsReached(error: Error, context: JobContext<TMetadata>): Promise<void> {
+    context.logger.error(`Job max attempts reached: ${this.jobName}`, {
+      jobName: this.jobName,
+      jobId: context.jobId,
+      error: error.message,
+      stack: error.stack,
+    });
   }
 
   /**
@@ -259,13 +244,10 @@ export abstract class BaseJob<
    * @param context - Job context
    */
   async onCancel(context: JobContext<TMetadata>): Promise<void> {
-    context.logger.warn(
-      `Job cancelled: ${this.jobName}`,
-      {
-        jobName: this.jobName,
-        jobId: context.jobId,
-      }
-    );
+    context.logger.warn(`Job cancelled: ${this.jobName}`, {
+      jobName: this.jobName,
+      jobId: context.jobId,
+    });
   }
 
   /**
@@ -316,6 +298,14 @@ export abstract class BaseJob<
         // Validate payload
         const validatedPayload = this.validate(payload);
 
+        if (!(await this.shouldExecute(validatedPayload, context))) {
+          context.logger.info('Skipping job due to feature flag disabled', {
+            jobName: this.jobName,
+            jobId: context.jobId,
+          });
+          return undefined;
+        }
+
         // Execute lifecycle hooks
         await this.beforeExecute(validatedPayload, context);
 
@@ -357,6 +347,44 @@ export abstract class BaseJob<
         span.end();
       }
     };
+  }
+
+  protected getFeatureFlagKey(
+    _payload: z.infer<TPayload>,
+    _context: JobContext<TMetadata>
+  ): string | undefined {
+    return undefined;
+  }
+
+  private async shouldExecute(
+    payload: z.infer<TPayload>,
+    context: JobContext<TMetadata>
+  ): Promise<boolean> {
+    if (!this.featureFlagService) {
+      return true;
+    }
+
+    const flagKey = this.getFeatureFlagKey(payload, context);
+    if (!flagKey) {
+      return true;
+    }
+
+    try {
+      const enabled = await this.featureFlagService.isEnabled(
+        flagKey,
+        this.jobName,
+        payload,
+        context as JobContext<Record<string, unknown>>
+      );
+      return enabled;
+    } catch (error) {
+      context.logger.warn('Feature flag evaluation failed; defaulting to enabled', {
+        jobName: this.jobName,
+        flagKey,
+        error: (error as Error).message,
+      });
+      return true;
+    }
   }
 
   /**

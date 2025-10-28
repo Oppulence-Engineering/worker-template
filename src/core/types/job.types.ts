@@ -3,18 +3,21 @@
  * @module core/types/job
  */
 
-import type { JobHelpers, Task, Logger as GraphileLogger } from 'graphile-worker';
-import type { Span } from '@opentelemetry/api';
-import type { z } from 'zod';
-
 import type {
   AsyncFunction,
+  Awaitable,
   Brand,
   Constructor,
   Prettify,
-  Result,
-  Awaitable,
+  Result as _Result,
 } from './common.types';
+import type { FeatureFlagService } from '../featureFlags/FeatureFlagService';
+import type { Span } from '@opentelemetry/api';
+import type { JobHelpers, Logger as GraphileLogger, Task } from 'graphile-worker';
+import type { z } from 'zod';
+
+
+export type { JobHelpers } from 'graphile-worker';
 
 /**
  * Job identifier - branded string for type safety
@@ -44,13 +47,7 @@ export type JobPriority = -5 | -4 | -3 | -2 | -1 | 0 | 1 | 2 | 3 | 4 | 5;
 /**
  * Job status enumeration
  */
-export type JobStatus =
-  | 'pending'
-  | 'running'
-  | 'completed'
-  | 'failed'
-  | 'cancelled'
-  | 'retrying';
+export type JobStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled' | 'retrying';
 
 /**
  * Job key modes for deduplication
@@ -215,7 +212,7 @@ export interface JobError extends Error {
 export interface IJob<
   TPayload extends z.ZodType = z.ZodType,
   TResult = void,
-  TMetadata = Record<string, unknown>
+  TMetadata = Record<string, unknown>,
 > {
   /** Unique job name */
   readonly jobName: JobName;
@@ -251,6 +248,8 @@ export interface IJob<
    * @returns Complete job configuration
    */
   getConfig(overrides?: Partial<JobConfig>): JobConfig;
+
+  setFeatureFlagService?(service: FeatureFlagService | undefined): void;
 }
 
 /**
@@ -262,15 +261,12 @@ export interface IJob<
 export interface JobLifecycleHooks<
   TPayload extends z.ZodType,
   TResult,
-  TMetadata = Record<string, unknown>
+  TMetadata = Record<string, unknown>,
 > {
   /**
    * Hook called before job execution
    */
-  beforeExecute?(
-    payload: z.infer<TPayload>,
-    context: JobContext<TMetadata>
-  ): Awaitable<void>;
+  beforeExecute?(payload: z.infer<TPayload>, context: JobContext<TMetadata>): Awaitable<void>;
 
   /**
    * Hook called after successful job execution
@@ -285,11 +281,7 @@ export interface JobLifecycleHooks<
   /**
    * Hook called when job is retried
    */
-  onRetry?(
-    error: Error,
-    attemptNumber: number,
-    context: JobContext<TMetadata>
-  ): Awaitable<void>;
+  onRetry?(error: Error, attemptNumber: number, context: JobContext<TMetadata>): Awaitable<void>;
 
   /**
    * Hook called when job exhausts all retries
@@ -306,9 +298,7 @@ export interface JobLifecycleHooks<
  * Infer payload type from job
  * @template T - Job type
  */
-export type InferJobPayload<T> = T extends IJob<infer P, unknown, unknown>
-  ? z.infer<P>
-  : never;
+export type InferJobPayload<T> = T extends IJob<infer P, unknown, unknown> ? z.infer<P> : never;
 
 /**
  * Infer result type from job
@@ -326,7 +316,7 @@ export type InferJobMetadata<T> = T extends IJob<z.ZodType, unknown, infer M> ? 
  * Infer job configuration from job
  * @template T - Job type
  */
-export type InferJobConfig<T extends IJob> = JobConfig;
+export type InferJobConfig<_T extends IJob> = JobConfig;
 
 /**
  * Job registry map type
@@ -369,10 +359,7 @@ export interface IJobQueue<TJob extends IJob> {
    * @param config - Optional job configuration
    * @returns Job ID
    */
-  enqueue(
-    payload: InferJobPayload<TJob>,
-    config?: Partial<JobConfig>
-  ): Promise<JobId>;
+  enqueue(payload: InferJobPayload<TJob>, config?: Partial<JobConfig>): Promise<JobId>;
 
   /**
    * Enqueue multiple jobs in batch
@@ -380,10 +367,7 @@ export interface IJobQueue<TJob extends IJob> {
    * @param config - Optional job configuration
    * @returns Array of job IDs
    */
-  enqueueBatch(
-    payloads: InferJobPayload<TJob>[],
-    config?: Partial<JobConfig>
-  ): Promise<JobId[]>;
+  enqueueBatch(payloads: InferJobPayload<TJob>[], config?: Partial<JobConfig>): Promise<JobId[]>;
 
   /**
    * Schedule a job for future execution
@@ -477,7 +461,7 @@ export interface JobEvent<TJobName extends string, TPayload = unknown, TResult =
 export type JobConstructor<
   TPayload extends z.ZodType = z.ZodType,
   TResult = void,
-  TMetadata = Record<string, unknown>
+  TMetadata = Record<string, unknown>,
 > = Constructor<IJob<TPayload, TResult, TMetadata>>;
 
 /**

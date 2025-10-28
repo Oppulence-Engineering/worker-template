@@ -7,13 +7,15 @@ import { run, type Runner, type RunnerOptions } from 'graphile-worker';
 import { Pool } from 'pg';
 
 import { getConfig, getDatabaseUrl } from './core/config';
+import { FeatureFlagService } from './core/featureFlags';
 import { createLogger } from './core/instrumentation/logger';
+import { createMetricsCollectors, setupMetrics } from './core/instrumentation/metrics';
 import { setupTracing } from './core/instrumentation/tracing';
-import { setupMetrics, createMetricsCollectors } from './core/instrumentation/metrics';
+import { ScheduleReconciler, SchedulerRegistry } from './core/scheduler';
 import { JobRegistry } from './core/worker/JobRegistry';
-
-// Import example jobs
 import { EmailJob } from './jobs/examples/EmailJob';
+import { OrderFulfillmentWorkflow } from './jobs/examples/OrderFulfillmentWorkflow';
+import { ScheduledJobDefinitions } from './jobs/schedules';
 
 /**
  * Graceful shutdown handler
@@ -55,17 +57,17 @@ class GracefulShutdown {
   }
 
   setupHandlers(): void {
-    process.on('SIGTERM', () => this.shutdown('SIGTERM'));
-    process.on('SIGINT', () => this.shutdown('SIGINT'));
+    process.on('SIGTERM', () => void this.shutdown('SIGTERM'));
+    process.on('SIGINT', () => void this.shutdown('SIGINT'));
 
     process.on('uncaughtException', (error) => {
       this.logger.fatal({ error }, 'Uncaught exception');
-      this.shutdown('uncaughtException');
+      void this.shutdown('uncaughtException');
     });
 
     process.on('unhandledRejection', (reason) => {
       this.logger.fatal({ reason }, 'Unhandled rejection');
-      this.shutdown('unhandledRejection');
+      void this.shutdown('unhandledRejection');
     });
   }
 }
@@ -79,7 +81,10 @@ async function main(): Promise<void> {
 
   // Create logger
   const logger = createLogger(config.observability.logging, config.observability.serviceName);
-  logger.info({ config: { ...config, database: { ...config.database, password: '***' } } }, 'Starting Graphile Worker');
+  logger.info(
+    { config: { ...config, database: { ...config.database, password: '***' } } },
+    'Starting Graphile Worker'
+  );
 
   // Setup OpenTelemetry
   const tracingSDK = setupTracing(config.observability);
@@ -94,7 +99,9 @@ async function main(): Promise<void> {
   }
 
   // Create metrics collectors
-  const { jobMetrics, dbMetrics } = createMetricsCollectors(config.observability.serviceName);
+  const { jobMetrics, schedulerMetrics, workflowMetrics } = createMetricsCollectors(
+    config.observability.serviceName
+  );
   logger.info('Metrics collectors created');
 
   // Create database pool
@@ -130,12 +137,39 @@ async function main(): Promise<void> {
   const registry = new JobRegistry();
   registry.setLogger(logger);
 
+  const featureFlagService = new FeatureFlagService(config.featureFlags);
+  registry.setFeatureFlagService(featureFlagService);
+
+  // Setup scheduler registry
+  const schedulerRegistry = new SchedulerRegistry(logger);
+  schedulerRegistry.registerMany([...ScheduledJobDefinitions]);
+  const scheduledJobs = schedulerRegistry.createJobs(schedulerMetrics);
+
   // Register jobs
   logger.info('Registering jobs...');
   registry.register(new EmailJob());
+  registry.register(new OrderFulfillmentWorkflow(workflowMetrics));
+  registry.registerMany(scheduledJobs);
   // Add more jobs here:
   // registry.register(new DataProcessingJob());
   // registry.register(new WebhookJob());
+
+  const parsedCronItems = await schedulerRegistry.compileCronItems(schedulerMetrics);
+  logger.info(
+    {
+      schedules: schedulerRegistry.getDefinitions().map((definition) => definition.key),
+    },
+    'Compiled scheduled jobs'
+  );
+
+  const scheduleReconciler = new ScheduleReconciler({
+    pool,
+    schema: config.worker.schema,
+    logger,
+    metrics: schedulerMetrics,
+  });
+
+  await scheduleReconciler.reconcile(schedulerRegistry.getDefinitions());
 
   const stats = registry.getStats();
   logger.info(stats, 'Jobs registered');
@@ -148,6 +182,7 @@ async function main(): Promise<void> {
     schema: config.worker.schema,
     taskList: registry.getTaskList(),
     noHandleSignals: config.worker.noHandleSignals,
+    parsedCronItems,
   };
 
   // Start worker

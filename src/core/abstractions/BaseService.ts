@@ -3,10 +3,11 @@
  * @module core/abstractions/BaseService
  */
 
-import type { Logger } from 'pino';
 import { trace, type Span } from '@opentelemetry/api';
 
-import type { Result, AsyncFunction } from '../types';
+import type { AsyncFunction, Result as _Result } from '../types';
+import type { Logger } from 'pino';
+
 
 /**
  * Service dependencies interface
@@ -57,12 +58,7 @@ export class ServiceError extends Error {
    * Create a not found error
    */
   static notFound(resource: string, id: string): ServiceError {
-    return new ServiceError(
-      `${resource} not found`,
-      'NOT_FOUND',
-      404,
-      { resource, id }
-    );
+    return new ServiceError(`${resource} not found`, 'NOT_FOUND', 404, { resource, id });
   }
 
   /**
@@ -221,7 +217,7 @@ export abstract class BaseService<TDependencies extends ServiceDependencies = Se
    */
   protected async executeWithResult<TData, TError = ServiceError>(
     operation: AsyncFunction<[], TData>
-  ): Promise<Result<TData, TError>> {
+  ): Promise<_Result<TData, TError>> {
     try {
       const data = await operation();
       return { success: true, data };
@@ -258,11 +254,11 @@ export abstract class BaseService<TDependencies extends ServiceDependencies = Se
    * @returns Entity (non-null)
    * @throws {ServiceError} If entity is null/undefined
    */
-  protected assertExists<T>(
-    entity: T | null | undefined,
+  protected assertExists<_T>(
+    entity: _T | null | undefined,
     resourceName: string,
     id: string
-  ): asserts entity is T {
+  ): asserts entity is _T {
     if (entity === null || entity === undefined) {
       throw ServiceError.notFound(resourceName, id);
     }
@@ -432,7 +428,7 @@ export abstract class BaseService<TDependencies extends ServiceDependencies = Se
 
       if (executing.length >= concurrency) {
         await Promise.race(executing);
-        executing.splice(
+        void executing.splice(
           executing.findIndex((p) => p === promise),
           1
         );

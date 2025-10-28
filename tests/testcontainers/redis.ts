@@ -56,8 +56,11 @@ export class RedisContainerManager extends BaseContainerManager<
    * Start Redis container
    */
   protected async startContainer(): Promise<StartedTestContainer> {
-    const { password, maxMemory = '256mb', maxMemoryPolicy = 'allkeys-lru' } =
-      this.config.config || {};
+    const {
+      password,
+      maxMemory = '256mb',
+      maxMemoryPolicy = 'allkeys-lru',
+    } = this.config.config || {};
 
     let container = new GenericContainer(this.config.image).withExposedPorts(...this.config.ports);
 

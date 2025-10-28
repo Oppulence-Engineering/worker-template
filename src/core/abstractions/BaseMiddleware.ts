@@ -1,12 +1,16 @@
 /**
  * @fileoverview Generic base middleware class for composable middleware patterns
  * @module core/abstractions/BaseMiddleware
+ *
+ * Note: Lifecycle hooks are intentionally async to allow subclasses to use await.
  */
 
-import type { Logger } from 'pino';
+/* eslint-disable @typescript-eslint/require-await */
+
 import { trace, type Span } from '@opentelemetry/api';
 
 import type { AsyncFunction } from '../types';
+import type { Logger } from 'pino';
 
 /**
  * Middleware context interface
@@ -53,10 +57,7 @@ export interface IMiddleware<TContext = unknown, TResult = unknown> {
    * @param next - Next middleware function
    * @returns Execution result
    */
-  execute(
-    context: MiddlewareContext<TContext>,
-    next: NextFunction<TResult>
-  ): Promise<TResult>;
+  execute(context: MiddlewareContext<TContext>, next: NextFunction<TResult>): Promise<TResult>;
 
   /**
    * Get middleware name
@@ -164,10 +165,7 @@ export abstract class BaseMiddleware<TContext = unknown, TResult = unknown>
    * @param context - Middleware context
    * @param span - OpenTelemetry span
    */
-  protected async before(
-    context: MiddlewareContext<TContext>,
-    span: Span
-  ): Promise<void> {
+  protected async before(context: MiddlewareContext<TContext>, _span: Span): Promise<void> {
     context.logger.debug(
       { middleware: this.middlewareName },
       `Executing middleware: ${this.middlewareName}`
@@ -183,8 +181,8 @@ export abstract class BaseMiddleware<TContext = unknown, TResult = unknown>
    */
   protected async after(
     context: MiddlewareContext<TContext>,
-    result: TResult,
-    span: Span
+    _result: TResult,
+    _span: Span
   ): Promise<void> {
     context.logger.debug(
       { middleware: this.middlewareName },
@@ -202,7 +200,7 @@ export abstract class BaseMiddleware<TContext = unknown, TResult = unknown>
   protected async onError(
     context: MiddlewareContext<TContext>,
     error: Error,
-    span: Span
+    _span: Span
   ): Promise<void> {
     context.logger.error(
       {
@@ -282,7 +280,7 @@ export class MiddlewarePipeline<TContext = unknown, TResult = unknown> {
   ): Promise<TResult> {
     const middlewareContext: MiddlewareContext<TContext> = {
       context,
-      logger: this.logger ?? console as unknown as Logger,
+      logger: this.logger ?? (console as unknown as Logger),
       requestId: crypto.randomUUID(),
       startTime: Date.now(),
       metadata: {},

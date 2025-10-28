@@ -3,8 +3,11 @@
  * @module core/instrumentation/logger
  */
 
-import pino, { type Logger } from 'pino';
+/* eslint-disable import/no-named-as-default, import/no-named-as-default-member */
+
 import { randomUUID } from 'crypto';
+
+import pino, { type Logger } from 'pino';
 
 import type { LoggingConfig } from '../config/schema';
 import type { CorrelationId } from '../types';
@@ -21,8 +24,8 @@ export function createLogger(config: LoggingConfig, serviceName: string): Logger
     formatters: {
       level: (label) => ({ level: label }),
       bindings: (bindings) => ({
-        pid: bindings.pid,
-        hostname: bindings.hostname,
+        pid: bindings.pid as number,
+        hostname: bindings.hostname as string,
       }),
     },
     serializers: {
@@ -50,7 +53,7 @@ export function createLogger(config: LoggingConfig, serviceName: string): Logger
           singleLine: false,
           messageFormat: '[{service}] {msg}',
         },
-      })
+      }) as pino.DestinationStream
     );
   }
 
@@ -65,7 +68,7 @@ export function createLogger(config: LoggingConfig, serviceName: string): Logger
  * @returns Child logger with correlation ID
  */
 export function withCorrelationId(logger: Logger, correlationId?: CorrelationId): Logger {
-  const id = correlationId || (randomUUID() as CorrelationId);
+  const id = correlationId ?? (randomUUID() as CorrelationId);
   return logger.child({ correlationId: id });
 }
 
