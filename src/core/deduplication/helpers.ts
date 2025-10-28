@@ -66,15 +66,26 @@ export async function enqueueDeduplicatedJob<TPayload>(
   params: DeduplicatedJobParams<TPayload>
 ): Promise<void> {
   const { jobName, payload, taskSpec, deduplication, now } = params;
-  const jobKey = buildDeduplicationKey({
+  const keyParams: Parameters<typeof buildDeduplicationKey<TPayload>>[0] = {
     jobName,
     payload,
-    namespace: deduplication.namespace,
-    ttlMs: deduplication.ttlMs,
     keyExtractor: deduplication.key,
-    maxKeyLength: deduplication.maxKeyLength,
-    now,
-  });
+  };
+
+  if (deduplication.namespace !== undefined) {
+    keyParams.namespace = deduplication.namespace;
+  }
+  if (deduplication.ttlMs !== undefined) {
+    keyParams.ttlMs = deduplication.ttlMs;
+  }
+  if (deduplication.maxKeyLength !== undefined) {
+    keyParams.maxKeyLength = deduplication.maxKeyLength;
+  }
+  if (now) {
+    keyParams.now = now;
+  }
+
+  const jobKey = buildDeduplicationKey(keyParams);
 
   const strategy = deduplication.strategy ?? 'drop';
   const jobKeyMode = STRATEGY_TO_MODE[strategy] ?? 'unsafe_dedupe';

@@ -211,11 +211,15 @@ export abstract class BaseRepository<
         'entity.id': String(id),
       });
 
-      const query = this.buildSelectQuery({
+      const selectOptions: Parameters<typeof this.buildSelectQuery>[0] = {
         where: [`${this.idColumn} = $1`],
         limit: 1,
-        includeSoftDeleted: options.includeSoftDeleted,
-      });
+      };
+      if (options.includeSoftDeleted !== undefined) {
+        selectOptions.includeSoftDeleted = options.includeSoftDeleted;
+      }
+
+      const query = this.buildSelectQuery(selectOptions);
 
       const result = await this.executeQuery<TEntity>(query, [id], options);
       const entity = result.rows[0] ?? null;
@@ -251,22 +255,30 @@ export abstract class BaseRepository<
       const { whereClause, values } = this.buildFilterClause(filters);
 
       // Count query
-      const countQuery = this.buildSelectQuery({
+      const countQueryOptions: Parameters<typeof this.buildSelectQuery>[0] = {
         select: ['COUNT(*) as total'],
         where: whereClause,
-        includeSoftDeleted: options.includeSoftDeleted,
-      });
+      };
+      if (options.includeSoftDeleted !== undefined) {
+        countQueryOptions.includeSoftDeleted = options.includeSoftDeleted;
+      }
+      const countQuery = this.buildSelectQuery(countQueryOptions);
       const countResult = await this.executeQuery<{ total: string }>(countQuery, values, options);
       const total = parseInt(countResult.rows[0]?.total ?? '0', 10);
 
       // Data query
-      const dataQuery = this.buildSelectQuery({
+      const dataQueryOptions: Parameters<typeof this.buildSelectQuery>[0] = {
         where: whereClause,
-        orderBy: sortBy ? `${sortBy} ${sortOrder ?? 'ASC'}` : undefined,
         limit: pageSize,
         offset,
-        includeSoftDeleted: options.includeSoftDeleted,
-      });
+      };
+      if (sortBy) {
+        dataQueryOptions.orderBy = `${sortBy} ${sortOrder ?? 'ASC'}`;
+      }
+      if (options.includeSoftDeleted !== undefined) {
+        dataQueryOptions.includeSoftDeleted = options.includeSoftDeleted;
+      }
+      const dataQuery = this.buildSelectQuery(dataQueryOptions);
       const dataResult = await this.executeQuery<TEntity>(dataQuery, values, options);
 
       const items = dataResult.rows.map((row) => this.validate(row));
@@ -300,11 +312,15 @@ export abstract class BaseRepository<
         'db.operation': 'SELECT',
       });
 
-      const query = this.buildSelectQuery({
+      const selectOptions: Parameters<typeof this.buildSelectQuery>[0] = {
         where: whereClause,
         limit: 1,
-        includeSoftDeleted: options.includeSoftDeleted,
-      });
+      };
+      if (options.includeSoftDeleted !== undefined) {
+        selectOptions.includeSoftDeleted = options.includeSoftDeleted;
+      }
+
+      const query = this.buildSelectQuery(selectOptions);
 
       const result = await this.executeQuery<TEntity>(query, values, options);
       const entity = result.rows[0] ?? null;
@@ -329,10 +345,14 @@ export abstract class BaseRepository<
         'db.operation': 'SELECT',
       });
 
-      const query = this.buildSelectQuery({
+      const selectOptions: Parameters<typeof this.buildSelectQuery>[0] = {
         where: whereClause,
-        includeSoftDeleted: options.includeSoftDeleted,
-      });
+      };
+      if (options.includeSoftDeleted !== undefined) {
+        selectOptions.includeSoftDeleted = options.includeSoftDeleted;
+      }
+
+      const query = this.buildSelectQuery(selectOptions);
 
       const result = await this.executeQuery<TEntity>(query, values, options);
 
@@ -478,12 +498,16 @@ export abstract class BaseRepository<
    */
   async exists(id: TId, options: QueryOptions = {}): Promise<boolean> {
     return this.trace('exists', async (span) => {
-      const query = this.buildSelectQuery({
+      const selectOptions: Parameters<typeof this.buildSelectQuery>[0] = {
         select: [`${this.idColumn}`],
         where: [`${this.idColumn} = $1`],
         limit: 1,
-        includeSoftDeleted: options.includeSoftDeleted,
-      });
+      };
+      if (options.includeSoftDeleted !== undefined) {
+        selectOptions.includeSoftDeleted = options.includeSoftDeleted;
+      }
+
+      const query = this.buildSelectQuery(selectOptions);
 
       span.setAttributes({
         'db.table': this.tableName,
@@ -503,11 +527,15 @@ export abstract class BaseRepository<
     return this.trace('count', async (span) => {
       const { whereClause, values } = this.buildCriteriaClause(criteria);
 
-      const query = this.buildSelectQuery({
+      const countQueryOptions: Parameters<typeof this.buildSelectQuery>[0] = {
         select: ['COUNT(*) as count'],
         where: whereClause,
-        includeSoftDeleted: options.includeSoftDeleted,
-      });
+      };
+      if (options.includeSoftDeleted !== undefined) {
+        countQueryOptions.includeSoftDeleted = options.includeSoftDeleted;
+      }
+
+      const query = this.buildSelectQuery(countQueryOptions);
 
       span.setAttributes({
         'db.table': this.tableName,

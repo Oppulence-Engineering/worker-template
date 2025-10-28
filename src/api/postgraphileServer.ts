@@ -27,8 +27,6 @@ export function createPostgraphileServer(
     watchPg: config.watch,
     legacyRelations: config.legacyRelations,
     pgDefaultRole: config.defaultRole,
-    jwtSecret: config.jwtSecret,
-    jwtPgTypeIdentifier: config.jwtSecret ? config.jwtTokenIdentifier : undefined,
     enableCors: false,
     disableQueryLog: false,
     allowExplain: process.env.NODE_ENV !== 'production',
@@ -39,12 +37,15 @@ export function createPostgraphileServer(
     showErrorStack: process.env.NODE_ENV !== 'production',
     disableDefaultMutations: false,
     subscriptions: false,
-    ownerConnectionString: config.ownerConnectionString,
   };
 
   if (config.jwtSecret) {
     postgraphileOptions.jwtSecret = config.jwtSecret;
     postgraphileOptions.jwtPgTypeIdentifier = config.jwtTokenIdentifier;
+  }
+
+  if (config.ownerConnectionString) {
+    postgraphileOptions.ownerConnectionString = config.ownerConnectionString;
   }
 
   return {

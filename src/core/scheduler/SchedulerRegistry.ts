@@ -34,7 +34,7 @@ const EmptyPayloadSchema = z.object({}).passthrough();
  */
 export class SchedulerRegistry {
   private readonly definitions = new Map<JobName, ScheduledJobDefinition<z.ZodTypeAny, unknown>>();
-  private readonly logger?: Logger;
+  private readonly logger: Logger | undefined;
 
   constructor(logger?: Logger) {
     this.logger = logger;
@@ -130,23 +130,42 @@ export class SchedulerRegistry {
         : undefined;
 
       const payload = await this.resolvePayload(definition, metrics);
+      let cronOptions: CronItem['options'] | undefined;
 
-      cronItems.push({
+      if (options) {
+        cronOptions = {
+          backfillPeriod: options.backfillPeriod,
+        };
+
+        if (options.maxAttempts !== undefined) {
+          cronOptions.maxAttempts = options.maxAttempts;
+        }
+        if (options.priority !== undefined) {
+          cronOptions.priority = options.priority;
+        }
+        if (options.queueName) {
+          cronOptions.queueName = options.queueName;
+        }
+        if (options.jobKey) {
+          cronOptions.jobKey = options.jobKey;
+        }
+        if (options.jobKeyMode) {
+          cronOptions.jobKeyMode = options.jobKeyMode;
+        }
+      }
+
+      const cronItem: CronItem = {
         task: definition.key,
         match: definition.cron,
-        options: options
-          ? {
-              backfillPeriod: options.backfillPeriod,
-              maxAttempts: options.maxAttempts,
-              priority: options.priority,
-              queueName: options.queueName,
-              jobKey: options.jobKey,
-              jobKeyMode: options.jobKeyMode,
-            }
-          : undefined,
         payload: payload ?? {},
         identifier: definition.identifier ?? definition.key,
-      });
+      };
+
+      if (cronOptions) {
+        cronItem.options = cronOptions;
+      }
+
+      cronItems.push(cronItem);
     }
 
     return parseCronItems(cronItems);

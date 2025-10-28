@@ -292,10 +292,10 @@ export abstract class WorkflowJob<
       type,
       workflowId: runtime.workflowId,
       jobContext: context,
-      stepId,
-      error,
-      result,
-      snapshot,
+      ...(stepId !== undefined ? { stepId } : {}),
+      ...(error !== undefined ? { error } : {}),
+      ...(typeof result !== 'undefined' ? { result } : {}),
+      ...(snapshot !== undefined ? { snapshot } : {}),
     };
 
     await Promise.all(

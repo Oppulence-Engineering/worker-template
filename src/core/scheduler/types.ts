@@ -73,20 +73,6 @@ export const SchedulerOptionsSchema = z.object({
  */
 export type SchedulerOptions = z.infer<typeof SchedulerOptionsSchema>;
 
-/**
- * Metadata stored on the job context for scheduled executions.
- */
-export interface ScheduledJobMetadata {
-  scheduleKey: string;
-  identifier: string;
-  scheduledAt: Date;
-  isBackfill: boolean;
-  timezone?: string;
-  runtime?: {
-    startedAt: number;
-  };
-}
-
 export const ScheduledJobMetadataSchema = z.object({
   scheduleKey: z.string().min(1),
   identifier: z.string().min(1),
@@ -99,6 +85,11 @@ export const ScheduledJobMetadataSchema = z.object({
     })
     .optional(),
 });
+
+/**
+ * Metadata stored on the job context for scheduled executions.
+ */
+export type ScheduledJobMetadata = z.output<typeof ScheduledJobMetadataSchema>;
 
 /**
  * Handler context surfaced to scheduled job handlers.

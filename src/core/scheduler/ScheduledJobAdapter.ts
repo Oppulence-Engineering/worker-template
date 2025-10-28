@@ -12,6 +12,8 @@ import {
   SchedulerPayloadEnvelopeSchema,
 } from './types';
 
+import type { Span } from '@opentelemetry/api';
+import type { z } from 'zod';
 import type { SchedulerMetrics } from '../instrumentation/metrics';
 import type { JobConfig, JobContext, JobHelpers, JobName } from '../types';
 import type {
@@ -20,8 +22,6 @@ import type {
   ScheduledJobMetadata,
   SchedulerHandlerContext,
 } from './types';
-import type { Span } from '@opentelemetry/api';
-import type { z } from 'zod';
 
 /**
  * Adapter that wraps a {@link ScheduledJobDefinition} in the {@link BaseJob} lifecycle.
@@ -72,8 +72,11 @@ export class ScheduledJobAdapter<TPayloadSchema extends z.ZodTypeAny, TResult> e
       identifier: this.definition.identifier ?? String(this.definition.key),
       scheduledAt: cronMetadata.ts,
       isBackfill: cronMetadata.backfilled,
-      timezone: this.definition.timezone,
     };
+
+    if (this.definition.timezone) {
+      metadataRecord['timezone'] = this.definition.timezone;
+    }
 
     return super.createContext(helpers, span, metadataRecord);
   }
@@ -136,15 +139,20 @@ export class ScheduledJobAdapter<TPayloadSchema extends z.ZodTypeAny, TResult> e
     context: JobContext<Record<string, unknown>>
   ): SchedulerHandlerContext {
     const metadata = this.parseMetadata(context.metadata);
-    return {
+    const handlerContext: SchedulerHandlerContext = {
       logger: context.logger,
       jobName: context.jobName,
       scheduledAt: metadata.scheduledAt,
       isBackfill: metadata.isBackfill,
-      timezone: metadata.timezone,
       helpers: context.helpers,
-      recordMetrics: (metrics) => this.metrics.recordCustomMetrics(context.jobName, metrics),
+      recordMetrics: (metrics) => void this.metrics.recordCustomMetrics(context.jobName, metrics),
     };
+
+    if (metadata.timezone) {
+      handlerContext['timezone'] = metadata.timezone;
+    }
+
+    return handlerContext;
   }
 
   private recordDuration(metadataRecord: Record<string, unknown>, success: boolean): void {
@@ -190,8 +198,11 @@ export class ScheduledJobAdapter<TPayloadSchema extends z.ZodTypeAny, TResult> e
   ): Partial<JobConfig> {
     const config: Partial<JobConfig> = {
       maxAttempts: definition.options?.maxAttempts ?? 1,
-      priority: definition.options?.priority,
     };
+
+    if (definition.options?.priority !== undefined) {
+      config.priority = definition.options.priority;
+    }
 
     if (definition.options?.queueName) {
       config.queue = definition.options.queueName;

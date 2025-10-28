@@ -79,7 +79,7 @@ export abstract class BaseJob<
    * Tracer instance for this job
    */
   private readonly tracer = trace.getTracer('graphile-worker');
-  private featureFlagService?: FeatureFlagService;
+  private featureFlagService: FeatureFlagService | null = null;
 
   /**
    * Main execution method - must be implemented by subclasses
@@ -91,7 +91,7 @@ export abstract class BaseJob<
   abstract execute(payload: z.infer<TPayload>, context: JobContext<TMetadata>): Promise<TResult>;
 
   setFeatureFlagService(service: FeatureFlagService | undefined): void {
-    this.featureFlagService = service;
+    this.featureFlagService = service ?? null;
   }
 
   /**
@@ -170,17 +170,24 @@ export abstract class BaseJob<
    * @param context - Job context
    */
   async onError(error: Error, context: JobContext<TMetadata>): Promise<void> {
-    const jobError: JobError = Object.assign(error, {
+    const jobErrorBase = {
       jobId: context.jobId,
       jobName: this.jobName,
       attemptNumber: context.attemptNumber,
       retryable: context.attemptNumber < context.maxAttempts,
-      cause: error.cause instanceof Error ? error.cause : undefined,
       context: {
         correlationId: context.correlationId,
         metadata: context.metadata,
       },
-    });
+    } satisfies Omit<JobError, 'name' | 'message' | 'stack'>;
+
+    const jobError = Object.assign(error as JobError, jobErrorBase);
+
+    if (error.cause instanceof Error) {
+      jobError.cause = error.cause;
+    } else {
+      delete jobError.cause;
+    }
 
     context.logger.error(`Job failed: ${this.jobName}`, {
       error: jobError,
