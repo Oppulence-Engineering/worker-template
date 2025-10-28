@@ -23,10 +23,13 @@ export function createLogger(config: LoggingConfig, serviceName: string): Logger
     level: config.level,
     formatters: {
       level: (label) => ({ level: label }),
-      bindings: (bindings) => ({
-        pid: bindings.pid as number,
-        hostname: bindings.hostname as string,
-      }),
+      bindings: (bindings) => {
+        const record = bindings as Record<string, unknown>;
+        return {
+          pid: record['pid'] as number | undefined,
+          hostname: record['hostname'] as string | undefined,
+        };
+      },
     },
     serializers: {
       err: pino.stdSerializers.err,

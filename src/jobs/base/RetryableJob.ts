@@ -61,7 +61,7 @@ export class LinearBackoffStrategy implements RetryStrategy<LinearBackoffConfig>
 export class ConstantBackoffStrategy implements RetryStrategy<{ delay: number }> {
   readonly name = 'constant';
 
-  calculateDelay(attemptNumber: number, config: { delay: number }): number {
+  calculateDelay(_attemptNumber: number, config: { delay: number }): number {
     return config.delay;
   }
 

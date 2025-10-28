@@ -44,7 +44,7 @@
     "dev:api": "bun run --watch src/api/server.ts",
     "build": "bun run build:clean && bun run build:tsc",
     "build:clean": "rm -rf dist",
-    "build:tsc": "tsc -p tsconfig.build.relaxed.json",
+    "build:tsc": "tsc -p tsconfig.build.json",
     "start": "NODE_ENV=production bun run dist/index.js",
     "start:worker": "NODE_ENV=production bun run dist/worker.js",
     "start:api": "NODE_ENV=production bun run dist/api/server.js",

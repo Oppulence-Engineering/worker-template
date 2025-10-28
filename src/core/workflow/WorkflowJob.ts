@@ -125,8 +125,8 @@ export abstract class WorkflowJob<
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   protected async onWorkflowCompleted(
-    payload: z.infer<TPayloadSchema>,
-    context: JobContext<Record<string, unknown>>,
+    _payload: z.infer<TPayloadSchema>,
+    _context: JobContext<Record<string, unknown>>,
     runtime: WorkflowRuntimeState<TSharedState>
   ): Promise<TResult> {
     const lastResult = runtime.stepResults.get(this.steps.at(-1)?.id ?? '') as TResult | undefined;
