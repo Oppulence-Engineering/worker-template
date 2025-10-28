@@ -52,7 +52,7 @@ export interface IRepository<
   TEntity,
   TId = EntityId,
   TCreateDTO = Partial<TEntity>,
-  TUpdateDTO = Partial<TEntity>
+  TUpdateDTO = Partial<TEntity>,
 > {
   /**
    * Find entity by ID
@@ -146,7 +146,7 @@ export abstract class BaseRepository<
   TId = EntityId,
   TCreateDTO = Partial<TEntity>,
   TUpdateDTO = Partial<TEntity>,
-  TSchema extends z.ZodType<TEntity> = z.ZodType<TEntity>
+  TSchema extends z.ZodType<TEntity> = z.ZodType<TEntity>,
 > implements IRepository<TEntity, TId, TCreateDTO, TUpdateDTO>
 {
   /**
@@ -220,11 +220,11 @@ export abstract class BaseRepository<
       const result = await this.executeQuery<TEntity>(query, [id], options);
       const entity = result.rows[0] ?? null;
 
-      if (entity && this.schema) {
-        return this.validate(entity);
+      if (!entity) {
+        return null;
       }
 
-      return entity;
+      return this.validate(entity);
     });
   }
 
@@ -256,11 +256,7 @@ export abstract class BaseRepository<
         where: whereClause,
         includeSoftDeleted: options.includeSoftDeleted,
       });
-      const countResult = await this.executeQuery<{ total: string }>(
-        countQuery,
-        values,
-        options
-      );
+      const countResult = await this.executeQuery<{ total: string }>(countQuery, values, options);
       const total = parseInt(countResult.rows[0]?.total ?? '0', 10);
 
       // Data query
@@ -273,9 +269,7 @@ export abstract class BaseRepository<
       });
       const dataResult = await this.executeQuery<TEntity>(dataQuery, values, options);
 
-      const items = this.schema
-        ? dataResult.rows.map((row) => this.validate(row))
-        : dataResult.rows;
+      const items = dataResult.rows.map((row) => this.validate(row));
 
       const totalPages = Math.ceil(total / pageSize);
 
@@ -315,11 +309,11 @@ export abstract class BaseRepository<
       const result = await this.executeQuery<TEntity>(query, values, options);
       const entity = result.rows[0] ?? null;
 
-      if (entity && this.schema) {
-        return this.validate(entity);
+      if (!entity) {
+        return null;
       }
 
-      return entity;
+      return this.validate(entity);
     });
   }
 
@@ -342,7 +336,7 @@ export abstract class BaseRepository<
 
       const result = await this.executeQuery<TEntity>(query, values, options);
 
-      return this.schema ? result.rows.map((row) => this.validate(row)) : result.rows;
+      return result.rows.map((row) => this.validate(row));
     });
   }
 
@@ -351,14 +345,18 @@ export abstract class BaseRepository<
    */
   async create(data: TCreateDTO, options: QueryOptions = {}): Promise<TEntity> {
     return this.trace('create', async (span) => {
-      const enrichedData = {
-        ...data,
-        [this.createdAtColumn]: new Date(),
-        [this.updatedAtColumn]: new Date(),
-      } as Record<string, unknown>;
+      const baseDataEntries = Object.entries(data as Record<string, unknown>).filter(
+        ([key]) => key !== this.idColumn
+      );
 
-      const columns = Object.keys(enrichedData);
-      const values = Object.values(enrichedData);
+      const enrichedData: Record<string, unknown> = Object.fromEntries(baseDataEntries);
+
+      enrichedData[this.createdAtColumn] = new Date();
+      enrichedData[this.updatedAtColumn] = new Date();
+
+      const entries = Object.entries(enrichedData);
+      const columns = entries.map(([key]) => this.toColumnName(key));
+      const values = entries.map(([, value]) => value);
       const placeholders = columns.map((_, i) => `$${i + 1}`);
 
       const query = `
@@ -379,7 +377,7 @@ export abstract class BaseRepository<
         throw new Error(`Failed to create entity in ${this.tableName}`);
       }
 
-      return this.schema ? this.validate(entity) : entity;
+      return this.validate(entity);
     });
   }
 
@@ -388,13 +386,17 @@ export abstract class BaseRepository<
    */
   async update(id: TId, data: TUpdateDTO, options: QueryOptions = {}): Promise<TEntity> {
     return this.trace('update', async (span) => {
-      const enrichedData = {
-        ...data,
-        [this.updatedAtColumn]: new Date(),
-      } as Record<string, unknown>;
+      const baseDataEntries = Object.entries(data as Record<string, unknown>).filter(
+        ([key]) => key !== this.idColumn
+      );
+
+      const enrichedData: Record<string, unknown> = Object.fromEntries(baseDataEntries);
+      enrichedData[this.updatedAtColumn] = new Date();
 
       const entries = Object.entries(enrichedData);
-      const setClause = entries.map(([key], i) => `${key} = $${i + 1}`).join(', ');
+      const setClause = entries
+        .map(([key], i) => `${this.toColumnName(key)} = $${i + 1}`)
+        .join(', ');
       const values = [...entries.map(([, value]) => value), id];
 
       const query = `
@@ -418,7 +420,7 @@ export abstract class BaseRepository<
         throw new Error(`Entity not found in ${this.tableName} with id: ${String(id)}`);
       }
 
-      return this.schema ? this.validate(entity) : entity;
+      return this.validate(entity);
     });
   }
 
@@ -564,19 +566,23 @@ export abstract class BaseRepository<
       includeSoftDeleted = false,
     } = options;
 
+    const normalizedSelect = select.map((field) =>
+      field === '*' || field.includes('(') || field.includes(' ') ? field : this.toColumnName(field)
+    );
+
     const whereConditions = [...where];
     if (this.softDelete && !includeSoftDeleted) {
       whereConditions.push(`${this.deletedAtColumn} IS NULL`);
     }
 
-    let query = `SELECT ${select.join(', ')} FROM ${this.tableName}`;
+    let query = `SELECT ${normalizedSelect.join(', ')} FROM ${this.tableName}`;
 
     if (whereConditions.length > 0) {
       query += ` WHERE ${whereConditions.join(' AND ')}`;
     }
 
     if (orderBy) {
-      query += ` ORDER BY ${orderBy}`;
+      query += ` ORDER BY ${this.toOrderByClause(orderBy)}`;
     }
 
     if (limit) {
@@ -598,7 +604,7 @@ export abstract class BaseRepository<
     values: unknown[];
   } {
     const entries = Object.entries(criteria);
-    const whereClause = entries.map(([key], i) => `${key} = $${i + 1}`);
+    const whereClause = entries.map(([key], i) => `${this.toColumnName(key)} = $${i + 1}`);
     const values = entries.map(([, value]) => value);
 
     return { whereClause, values };
@@ -618,54 +624,54 @@ export abstract class BaseRepository<
       const paramIndex = index + 1;
       switch (filter.operator) {
         case 'eq':
-          whereClause.push(`${filter.field} = $${paramIndex}`);
+          whereClause.push(`${this.toColumnName(filter.field)} = $${paramIndex}`);
           values.push(filter.value);
           break;
         case 'ne':
-          whereClause.push(`${filter.field} != $${paramIndex}`);
+          whereClause.push(`${this.toColumnName(filter.field)} != $${paramIndex}`);
           values.push(filter.value);
           break;
         case 'gt':
-          whereClause.push(`${filter.field} > $${paramIndex}`);
+          whereClause.push(`${this.toColumnName(filter.field)} > $${paramIndex}`);
           values.push(filter.value);
           break;
         case 'gte':
-          whereClause.push(`${filter.field} >= $${paramIndex}`);
+          whereClause.push(`${this.toColumnName(filter.field)} >= $${paramIndex}`);
           values.push(filter.value);
           break;
         case 'lt':
-          whereClause.push(`${filter.field} < $${paramIndex}`);
+          whereClause.push(`${this.toColumnName(filter.field)} < $${paramIndex}`);
           values.push(filter.value);
           break;
         case 'lte':
-          whereClause.push(`${filter.field} <= $${paramIndex}`);
+          whereClause.push(`${this.toColumnName(filter.field)} <= $${paramIndex}`);
           values.push(filter.value);
           break;
         case 'in':
-          whereClause.push(`${filter.field} = ANY($${paramIndex})`);
+          whereClause.push(`${this.toColumnName(filter.field)} = ANY($${paramIndex})`);
           values.push(filter.value);
           break;
         case 'notIn':
-          whereClause.push(`${filter.field} != ALL($${paramIndex})`);
+          whereClause.push(`${this.toColumnName(filter.field)} != ALL($${paramIndex})`);
           values.push(filter.value);
           break;
         case 'contains':
-          whereClause.push(`${filter.field} ILIKE $${paramIndex}`);
+          whereClause.push(`${this.toColumnName(filter.field)} ILIKE $${paramIndex}`);
           values.push(`%${filter.value}%`);
           break;
         case 'startsWith':
-          whereClause.push(`${filter.field} ILIKE $${paramIndex}`);
+          whereClause.push(`${this.toColumnName(filter.field)} ILIKE $${paramIndex}`);
           values.push(`${filter.value}%`);
           break;
         case 'endsWith':
-          whereClause.push(`${filter.field} ILIKE $${paramIndex}`);
+          whereClause.push(`${this.toColumnName(filter.field)} ILIKE $${paramIndex}`);
           values.push(`%${filter.value}`);
           break;
         case 'isNull':
-          whereClause.push(`${filter.field} IS NULL`);
+          whereClause.push(`${this.toColumnName(filter.field)} IS NULL`);
           break;
         case 'isNotNull':
-          whereClause.push(`${filter.field} IS NOT NULL`);
+          whereClause.push(`${this.toColumnName(filter.field)} IS NOT NULL`);
           break;
       }
     });
@@ -721,11 +727,13 @@ export abstract class BaseRepository<
    * Validate entity with schema
    */
   protected validate(entity: unknown): TEntity {
+    const normalized = this.normalizeRow(entity as Record<string, unknown>);
+
     if (!this.schema) {
-      return entity as TEntity;
+      return normalized as TEntity;
     }
 
-    return this.schema.parse(entity);
+    return this.schema.parse(normalized);
   }
 
   /**
@@ -748,5 +756,47 @@ export abstract class BaseRepository<
     } finally {
       span.end();
     }
+  }
+
+  private toOrderByClause(orderBy: string): string {
+    const parts = orderBy.trim().split(/\s+/);
+    const column = this.toColumnName(parts[0]);
+
+    if (parts.length > 1) {
+      return `${column} ${parts.slice(1).join(' ')}`;
+    }
+
+    return column;
+  }
+
+  /**
+   * Normalize database row keys to entity property names
+   */
+  private normalizeRow(row: Record<string, unknown>): Record<string, unknown> {
+    const normalized: Record<string, unknown> = {};
+
+    for (const [key, value] of Object.entries(row)) {
+      normalized[this.toPropertyName(key)] = value;
+    }
+
+    return normalized;
+  }
+
+  /**
+   * Convert entity property to database column name (snake_case)
+   */
+  private toColumnName(property: string): string {
+    if (property.includes('_')) {
+      return property;
+    }
+
+    return property.replace(/([A-Z])/g, '_$1').toLowerCase();
+  }
+
+  /**
+   * Convert database column name to entity property name (camelCase)
+   */
+  private toPropertyName(column: string): string {
+    return column.replace(/_([a-z])/g, (_, letter: string) => letter.toUpperCase());
   }
 }

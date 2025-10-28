@@ -26,7 +26,7 @@ export type AbstractConstructor<T = object> = abstract new (...args: unknown[]) 
  */
 export type Mixin<T extends readonly Constructor[]> = T extends readonly [
   Constructor<infer A>,
-  ...infer Rest extends readonly Constructor[]
+  ...infer Rest extends readonly Constructor[],
 ]
   ? Constructor<A & (Rest extends readonly Constructor[] ? InstanceType<Rest[number]> : object)>
   : Constructor<object>;
@@ -252,9 +252,7 @@ export type Result<TData, TError = Error> =
  * Option type (Maybe monad)
  * @template T - The value type
  */
-export type Option<T> =
-  | { kind: 'some'; value: T }
-  | { kind: 'none' };
+export type Option<T> = { kind: 'some'; value: T } | { kind: 'none' };
 
 /**
  * Predicate function type
@@ -305,7 +303,7 @@ export type Tagged<TTag extends string, TUnion extends Record<TTag, string>> = T
 export type ExtractTagged<
   TUnion extends Record<TTag, string>,
   TTag extends keyof TUnion,
-  TValue extends TUnion[TTag]
+  TValue extends TUnion[TTag],
 > = Extract<TUnion, Record<TTag, TValue>>;
 
 /**

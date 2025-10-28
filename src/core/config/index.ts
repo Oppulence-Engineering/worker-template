@@ -4,7 +4,7 @@
  */
 
 import { config as loadEnv } from 'dotenv';
-import { AppConfigSchema, type AppConfig, buildDatabaseUrl } from './schema';
+import { AppConfigSchema, buildDatabaseUrl, type AppConfig } from './schema';
 
 // Load environment variables
 loadEnv();
@@ -98,7 +98,8 @@ export function loadConfig(): AppConfig {
       watch: parseBoolean(process.env.GRAPHQL_WATCH, false),
       enhanceGraphiql: parseBoolean(process.env.GRAPHQL_ENHANCE_GRAPHIQL, true),
       enableQueryBatching: parseBoolean(process.env.GRAPHQL_ENABLE_QUERY_BATCHING, true),
-      legacyRelations: (process.env.GRAPHQL_LEGACY_RELATIONS as 'omit' | 'deprecated' | 'only') || 'omit',
+      legacyRelations:
+        (process.env.GRAPHQL_LEGACY_RELATIONS as 'omit' | 'deprecated' | 'only') || 'omit',
       jwtSecret: process.env.GRAPHQL_JWT_SECRET,
       jwtTokenIdentifier: process.env.GRAPHQL_JWT_TOKEN_IDENTIFIER || 'app.jwt_token',
       enableIntrospection: parseBoolean(process.env.GRAPHQL_ENABLE_INTROSPECTION, true),

@@ -34,8 +34,8 @@ export type And<T extends boolean, U extends boolean> = T extends true
 export type Or<T extends boolean, U extends boolean> = T extends true
   ? true
   : U extends true
-  ? true
-  : false;
+    ? true
+    : false;
 
 /**
  * String manipulation types
@@ -50,7 +50,7 @@ export type Uncapitalize<T extends string> = Intrinsic.Uncapitalize<T>;
  */
 export type Join<T extends string[], TDelimiter extends string = ''> = T extends [
   infer First extends string,
-  ...infer Rest extends string[]
+  ...infer Rest extends string[],
 ]
   ? Rest extends []
     ? First
@@ -62,12 +62,12 @@ export type Join<T extends string[], TDelimiter extends string = ''> = T extends
  */
 export type Split<
   T extends string,
-  TDelimiter extends string = ''
+  TDelimiter extends string = '',
 > = T extends `${infer First}${TDelimiter}${infer Rest}`
   ? [First, ...Split<Rest, TDelimiter>]
   : T extends ''
-  ? []
-  : [T];
+    ? []
+    : [T];
 
 /**
  * Trim string whitespace
@@ -75,8 +75,8 @@ export type Split<
 export type Trim<T extends string> = T extends ` ${infer Rest}`
   ? Trim<Rest>
   : T extends `${infer Rest} `
-  ? Trim<Rest>
-  : T;
+    ? Trim<Rest>
+    : T;
 
 /**
  * Replace string occurrences
@@ -84,7 +84,7 @@ export type Trim<T extends string> = T extends ` ${infer Rest}`
 export type Replace<
   T extends string,
   TFrom extends string,
-  TTo extends string
+  TTo extends string,
 > = T extends `${infer Before}${TFrom}${infer After}`
   ? `${Before}${TTo}${Replace<After, TFrom, TTo>}`
   : T;
@@ -103,25 +103,16 @@ export type Head<T extends readonly unknown[]> = T extends [infer First, ...unkn
   ? First
   : never;
 
-export type Tail<T extends readonly unknown[]> = T extends [unknown, ...infer Rest]
-  ? Rest
-  : never;
+export type Tail<T extends readonly unknown[]> = T extends [unknown, ...infer Rest] ? Rest : never;
 
-export type Last<T extends readonly unknown[]> = T extends [...unknown[], infer L]
-  ? L
-  : never;
+export type Last<T extends readonly unknown[]> = T extends [...unknown[], infer L] ? L : never;
 
-export type Init<T extends readonly unknown[]> = T extends [...infer I, unknown]
-  ? I
-  : never;
+export type Init<T extends readonly unknown[]> = T extends [...infer I, unknown] ? I : never;
 
 /**
  * Includes type - check if array includes type
  */
-export type Includes<T extends readonly unknown[], U> = T extends [
-  infer First,
-  ...infer Rest
-]
+export type Includes<T extends readonly unknown[], U> = T extends [infer First, ...infer Rest]
   ? First extends U
     ? true
     : Includes<Rest, U>
@@ -135,28 +126,19 @@ export type Length<T extends readonly unknown[]> = T['length'];
 /**
  * Reverse tuple
  */
-export type Reverse<T extends readonly unknown[]> = T extends [
-  infer First,
-  ...infer Rest
-]
+export type Reverse<T extends readonly unknown[]> = T extends [infer First, ...infer Rest]
   ? [...Reverse<Rest>, First]
   : T;
 
 /**
  * Concat tuples
  */
-export type Concat<T extends readonly unknown[], U extends readonly unknown[]> = [
-  ...T,
-  ...U
-];
+export type Concat<T extends readonly unknown[], U extends readonly unknown[]> = [...T, ...U];
 
 /**
  * Flatten nested arrays
  */
-export type FlattenArray<T extends readonly unknown[]> = T extends [
-  infer First,
-  ...infer Rest
-]
+export type FlattenArray<T extends readonly unknown[]> = T extends [infer First, ...infer Rest]
   ? First extends readonly unknown[]
     ? [...FlattenArray<First>, ...FlattenArray<Rest>]
     : [First, ...FlattenArray<Rest>]
@@ -178,8 +160,8 @@ export type DeepPick<T, K extends string> = K extends `${infer First}.${infer Re
     ? { [P in First]: DeepPick<T[First], Rest> }
     : never
   : K extends keyof T
-  ? Pick<T, K>
-  : never;
+    ? Pick<T, K>
+    : never;
 
 /**
  * Deep omit - omit properties recursively
@@ -198,8 +180,8 @@ export type GetProperty<T, K extends string> = K extends `${infer First}.${infer
     ? GetProperty<T[First], Rest>
     : never
   : K extends keyof T
-  ? T[K]
-  : never;
+    ? T[K]
+    : never;
 
 /**
  * Set property type by path
@@ -251,26 +233,18 @@ export type ReturnType<T extends (...args: unknown[]) => unknown> = T extends (
   ? R
   : never;
 
-export type FirstParameter<T extends (...args: unknown[]) => unknown> = Parameters<T> extends [
-  infer First,
-  ...unknown[]
-]
-  ? First
-  : never;
+export type FirstParameter<T extends (...args: unknown[]) => unknown> =
+  Parameters<T> extends [infer First, ...unknown[]] ? First : never;
 
-export type LastParameter<T extends (...args: unknown[]) => unknown> = Parameters<T> extends [
-  ...unknown[],
-  infer L
-]
-  ? L
-  : never;
+export type LastParameter<T extends (...args: unknown[]) => unknown> =
+  Parameters<T> extends [...unknown[], infer L] ? L : never;
 
 /**
  * Curried function type
  */
 export type Curried<TArgs extends readonly unknown[], TReturn> = TArgs extends [
   infer First,
-  ...infer Rest
+  ...infer Rest,
 ]
   ? (arg: First) => Curried<Rest, TReturn>
   : TReturn;
@@ -315,19 +289,13 @@ export type PropertiesOf<T> = Pick<T, PropertyNames<T>>;
 /**
  * Instance type from constructor
  */
-export type InstanceType<T extends Constructor> = T extends Constructor<infer I>
-  ? I
-  : never;
+export type InstanceType<T extends Constructor> = T extends Constructor<infer I> ? I : never;
 
 /**
  * Extract constructor parameters
  */
-export type ConstructorParameters<T extends Constructor> = T extends Constructor<
-  unknown,
-  infer P
->
-  ? P
-  : never;
+export type ConstructorParameters<T extends Constructor> =
+  T extends Constructor<unknown, infer P> ? P : never;
 
 /**
  * Promise utilities
@@ -392,11 +360,7 @@ export type Fluent<T, TMethods extends keyof T = keyof T> = {
 /**
  * State machine type
  */
-export type StateMachine<
-  TState extends string,
-  TEvent extends string,
-  TContext = unknown
-> = {
+export type StateMachine<TState extends string, TEvent extends string, TContext = unknown> = {
   state: TState;
   context: TContext;
   transition(event: TEvent): StateMachine<TState, TEvent, TContext>;
@@ -450,11 +414,8 @@ export type Expand<T> = T extends infer O ? { [K in keyof O]: O[K] } : never;
 /**
  * Type equality check
  */
-export type Equals<X, Y> = (<T>() => T extends X ? 1 : 2) extends <T>() => T extends Y
-  ? 1
-  : 2
-  ? true
-  : false;
+export type Equals<X, Y> =
+  (<T>() => T extends X ? 1 : 2) extends <T>() => T extends Y ? 1 : 2 ? true : false;
 
 /**
  * Expect type to extend another
@@ -464,10 +425,7 @@ export type Extends<T, U> = T extends U ? true : false;
 /**
  * Require at least one property
  */
-export type RequireAtLeastOne<T, Keys extends keyof T = keyof T> = Pick<
-  T,
-  Exclude<keyof T, Keys>
-> &
+export type RequireAtLeastOne<T, Keys extends keyof T = keyof T> = Pick<T, Exclude<keyof T, Keys>> &
   {
     [K in Keys]-?: Required<Pick<T, K>> & Partial<Pick<T, Exclude<Keys, K>>>;
   }[Keys];
@@ -475,13 +433,9 @@ export type RequireAtLeastOne<T, Keys extends keyof T = keyof T> = Pick<
 /**
  * Require exactly one property
  */
-export type RequireExactlyOne<T, Keys extends keyof T = keyof T> = Pick<
-  T,
-  Exclude<keyof T, Keys>
-> &
+export type RequireExactlyOne<T, Keys extends keyof T = keyof T> = Pick<T, Exclude<keyof T, Keys>> &
   {
-    [K in Keys]: Required<Pick<T, K>> &
-      Partial<Record<Exclude<Keys, K>, undefined>>;
+    [K in Keys]: Required<Pick<T, K>> & Partial<Record<Exclude<Keys, K>, undefined>>;
   }[Keys];
 
 /**
@@ -495,13 +449,12 @@ export type Nominal<T, TName extends string> = T & { [__nominal]: TName };
  */
 export type Add<A extends number, B extends number> = [
   ...BuildTuple<A>,
-  ...BuildTuple<B>
+  ...BuildTuple<B>,
 ]['length'];
 
-type BuildTuple<
-  L extends number,
-  T extends unknown[] = []
-> = T['length'] extends L ? T : BuildTuple<L, [...T, unknown]>;
+type BuildTuple<L extends number, T extends unknown[] = []> = T['length'] extends L
+  ? T
+  : BuildTuple<L, [...T, unknown]>;
 
 /**
  * Recursive type depth limit

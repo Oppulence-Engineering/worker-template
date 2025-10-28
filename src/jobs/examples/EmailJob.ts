@@ -6,7 +6,9 @@
 import { z } from 'zod';
 
 import { ExponentialRetryJob } from '../base/RetryableJob';
-import type { JobConfig, JobContext, JobName } from '../../core/types';
+import type { JobConfig, JobContext, JobName, QueueName } from '../../core/types';
+
+const EMAIL_QUEUE: QueueName = 'email' as QueueName;
 
 /**
  * Email payload schema
@@ -46,7 +48,7 @@ export class EmailJob extends ExponentialRetryJob<typeof EmailPayloadSchema, voi
   public readonly defaultConfig: Partial<JobConfig> = {
     maxAttempts: 5,
     priority: 0,
-    queue: 'email' as any,
+    queue: EMAIL_QUEUE,
   };
 
   // Override retry strategy config for this job
@@ -60,18 +62,12 @@ export class EmailJob extends ExponentialRetryJob<typeof EmailPayloadSchema, voi
   /**
    * Send email implementation
    */
-  async execute(
-    payload: z.infer<typeof EmailPayloadSchema>,
-    context: JobContext
-  ): Promise<void> {
-    context.logger.info(
-      'Sending email',
-      {
-        to: payload.to,
-        subject: payload.subject,
-        hasAttachments: !!payload.attachments?.length,
-      }
-    );
+  async execute(payload: z.infer<typeof EmailPayloadSchema>, context: JobContext): Promise<void> {
+    context.logger.info('Sending email', {
+      to: payload.to,
+      subject: payload.subject,
+      hasAttachments: !!payload.attachments?.length,
+    });
 
     // Simulate email sending
     await this.sendEmailViaProvider(payload, context);

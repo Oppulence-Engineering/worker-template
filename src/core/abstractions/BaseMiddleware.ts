@@ -3,9 +3,9 @@
  * @module core/abstractions/BaseMiddleware
  */
 
-import type { Logger } from 'pino';
 import { trace, type Span } from '@opentelemetry/api';
 
+import type { Logger } from 'pino';
 import type { AsyncFunction } from '../types';
 
 /**
@@ -53,10 +53,7 @@ export interface IMiddleware<TContext = unknown, TResult = unknown> {
    * @param next - Next middleware function
    * @returns Execution result
    */
-  execute(
-    context: MiddlewareContext<TContext>,
-    next: NextFunction<TResult>
-  ): Promise<TResult>;
+  execute(context: MiddlewareContext<TContext>, next: NextFunction<TResult>): Promise<TResult>;
 
   /**
    * Get middleware name
@@ -164,10 +161,7 @@ export abstract class BaseMiddleware<TContext = unknown, TResult = unknown>
    * @param context - Middleware context
    * @param span - OpenTelemetry span
    */
-  protected async before(
-    context: MiddlewareContext<TContext>,
-    span: Span
-  ): Promise<void> {
+  protected async before(context: MiddlewareContext<TContext>, span: Span): Promise<void> {
     context.logger.debug(
       { middleware: this.middlewareName },
       `Executing middleware: ${this.middlewareName}`
@@ -282,7 +276,7 @@ export class MiddlewarePipeline<TContext = unknown, TResult = unknown> {
   ): Promise<TResult> {
     const middlewareContext: MiddlewareContext<TContext> = {
       context,
-      logger: this.logger ?? console as unknown as Logger,
+      logger: this.logger ?? (console as unknown as Logger),
       requestId: crypto.randomUUID(),
       startTime: Date.now(),
       metadata: {},

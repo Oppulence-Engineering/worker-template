@@ -3,10 +3,10 @@
  * @module core/abstractions/BaseService
  */
 
-import type { Logger } from 'pino';
 import { trace, type Span } from '@opentelemetry/api';
+import type { Logger } from 'pino';
 
-import type { Result, AsyncFunction } from '../types';
+import type { AsyncFunction, Result } from '../types';
 
 /**
  * Service dependencies interface
@@ -57,12 +57,7 @@ export class ServiceError extends Error {
    * Create a not found error
    */
   static notFound(resource: string, id: string): ServiceError {
-    return new ServiceError(
-      `${resource} not found`,
-      'NOT_FOUND',
-      404,
-      { resource, id }
-    );
+    return new ServiceError(`${resource} not found`, 'NOT_FOUND', 404, { resource, id });
   }
 
   /**
@@ -432,7 +427,7 @@ export abstract class BaseService<TDependencies extends ServiceDependencies = Se
 
       if (executing.length >= concurrency) {
         await Promise.race(executing);
-        executing.splice(
+        void executing.splice(
           executing.findIndex((p) => p === promise),
           1
         );

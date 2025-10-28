@@ -6,7 +6,10 @@
 import { MeterProvider, PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
 import { PrometheusExporter } from '@opentelemetry/exporter-prometheus';
 import { Resource } from '@opentelemetry/resources';
-import { SEMRESATTRS_SERVICE_NAME, SEMRESATTRS_SERVICE_VERSION } from '@opentelemetry/semantic-conventions';
+import {
+  SEMRESATTRS_SERVICE_NAME,
+  SEMRESATTRS_SERVICE_VERSION,
+} from '@opentelemetry/semantic-conventions';
 import { metrics, type Counter, type Histogram, type Meter } from '@opentelemetry/api';
 
 import type { ObservabilityConfig } from '../config/schema';
@@ -238,16 +241,114 @@ export class HttpMetrics {
 }
 
 /**
+ * Scheduler metrics collector
+ */
+export class SchedulerMetrics {
+  private readonly meter: Meter;
+  private readonly executions: Counter;
+  private readonly duration: Histogram;
+  private readonly failures: Counter;
+  private readonly reconciliation: Counter;
+  private readonly validationFailures: Counter;
+  private readonly customCounters = new Map<string, Counter>();
+
+  constructor(serviceName: string) {
+    this.meter = getMeter('scheduler', '1.0.0');
+
+    this.executions = this.meter.createCounter('scheduler_executions_total', {
+      description: 'Total number of scheduled job executions',
+      unit: '1',
+    });
+
+    this.duration = this.meter.createHistogram('scheduler_execution_duration_seconds', {
+      description: 'Scheduled job execution duration',
+      unit: 's',
+    });
+
+    this.failures = this.meter.createCounter('scheduler_execution_failures_total', {
+      description: 'Total number of scheduled job execution failures',
+      unit: '1',
+    });
+
+    this.reconciliation = this.meter.createCounter('scheduler_reconciliation_events_total', {
+      description: 'Number of reconciliation events executed',
+      unit: '1',
+    });
+
+    this.validationFailures = this.meter.createCounter('scheduler_validation_failures_total', {
+      description: 'Number of schedule payload validation failures',
+      unit: '1',
+    });
+  }
+
+  recordExecution(
+    jobName: string,
+    durationMs: number,
+    success: boolean,
+    backfilled: boolean
+  ): void {
+    const labels = { job_name: jobName, outcome: success ? 'success' : 'failure', backfilled };
+    this.executions.add(1, labels);
+    this.duration.record(durationMs / 1000, labels);
+
+    if (!success) {
+      this.failures.add(1, { job_name: jobName, backfilled });
+    }
+  }
+
+  recordReconciliation(action: 'inserted' | 'stale', count: number): void {
+    if (count > 0) {
+      this.reconciliation.add(count, { action });
+    }
+  }
+
+  recordValidationFailure(jobName: string, reason: string): void {
+    this.validationFailures.add(1, { job_name: jobName, reason });
+  }
+
+  recordCustomMetrics(jobName: string, metrics: Record<string, number>): void {
+    for (const [key, value] of Object.entries(metrics)) {
+      if (!Number.isFinite(value)) {
+        continue;
+      }
+
+      this.getCustomCounter(key).add(value, { job_name: jobName });
+    }
+  }
+
+  private getCustomCounter(key: string): Counter {
+    const metricName = this.toMetricName(key);
+    const existing = this.customCounters.get(metricName);
+    if (existing) {
+      return existing;
+    }
+
+    const counter = this.meter.createCounter(metricName, {
+      description: `Custom metric emitted by scheduled jobs (${metricName})`,
+      unit: '1',
+    });
+    this.customCounters.set(metricName, counter);
+    return counter;
+  }
+
+  private toMetricName(key: string): string {
+    return `scheduler_custom_${key.replace(/[^a-zA-Z0-9]+/g, '_').toLowerCase()}`;
+  }
+}
+
+/**
  * Create all metrics collectors
  */
 export function createMetricsCollectors(serviceName: string): {
   jobMetrics: JobMetrics;
   dbMetrics: DatabaseMetrics;
   httpMetrics: HttpMetrics;
+  schedulerMetrics: SchedulerMetrics;
 } {
   return {
     jobMetrics: new JobMetrics(serviceName),
     dbMetrics: new DatabaseMetrics(),
     httpMetrics: new HttpMetrics(),
+    schedulerMetrics: new SchedulerMetrics(serviceName),
   };
 }

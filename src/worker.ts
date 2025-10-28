@@ -8,12 +8,14 @@ import { Pool } from 'pg';
 
 import { getConfig, getDatabaseUrl } from './core/config';
 import { createLogger } from './core/instrumentation/logger';
+import { createMetricsCollectors, setupMetrics } from './core/instrumentation/metrics';
 import { setupTracing } from './core/instrumentation/tracing';
-import { setupMetrics, createMetricsCollectors } from './core/instrumentation/metrics';
+import { ScheduleReconciler, SchedulerRegistry } from './core/scheduler';
 import { JobRegistry } from './core/worker/JobRegistry';
 
 // Import example jobs
 import { EmailJob } from './jobs/examples/EmailJob';
+import { ScheduledJobDefinitions } from './jobs/schedules';
 
 /**
  * Graceful shutdown handler
@@ -79,7 +81,10 @@ async function main(): Promise<void> {
 
   // Create logger
   const logger = createLogger(config.observability.logging, config.observability.serviceName);
-  logger.info({ config: { ...config, database: { ...config.database, password: '***' } } }, 'Starting Graphile Worker');
+  logger.info(
+    { config: { ...config, database: { ...config.database, password: '***' } } },
+    'Starting Graphile Worker'
+  );
 
   // Setup OpenTelemetry
   const tracingSDK = setupTracing(config.observability);
@@ -94,7 +99,9 @@ async function main(): Promise<void> {
   }
 
   // Create metrics collectors
-  const { jobMetrics, dbMetrics } = createMetricsCollectors(config.observability.serviceName);
+  const { jobMetrics, dbMetrics, schedulerMetrics } = createMetricsCollectors(
+    config.observability.serviceName
+  );
   logger.info('Metrics collectors created');
 
   // Create database pool
@@ -130,12 +137,35 @@ async function main(): Promise<void> {
   const registry = new JobRegistry();
   registry.setLogger(logger);
 
+  // Setup scheduler registry
+  const schedulerRegistry = new SchedulerRegistry(logger);
+  schedulerRegistry.registerMany([...ScheduledJobDefinitions]);
+  const scheduledJobs = schedulerRegistry.createJobs(schedulerMetrics);
+
   // Register jobs
   logger.info('Registering jobs...');
   registry.register(new EmailJob());
+  registry.registerMany(scheduledJobs);
   // Add more jobs here:
   // registry.register(new DataProcessingJob());
   // registry.register(new WebhookJob());
+
+  const parsedCronItems = await schedulerRegistry.compileCronItems(schedulerMetrics);
+  logger.info(
+    {
+      schedules: schedulerRegistry.getDefinitions().map((definition) => definition.key),
+    },
+    'Compiled scheduled jobs'
+  );
+
+  const scheduleReconciler = new ScheduleReconciler({
+    pool,
+    schema: config.worker.schema,
+    logger,
+    metrics: schedulerMetrics,
+  });
+
+  await scheduleReconciler.reconcile(schedulerRegistry.getDefinitions());
 
   const stats = registry.getStats();
   logger.info(stats, 'Jobs registered');
@@ -148,6 +178,7 @@ async function main(): Promise<void> {
     schema: config.worker.schema,
     taskList: registry.getTaskList(),
     noHandleSignals: config.worker.noHandleSignals,
+    parsedCronItems,
   };
 
   // Start worker

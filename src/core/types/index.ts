@@ -94,6 +94,7 @@ export type {
   JobExecutionOptions,
   IsolationLevel,
   StreamChunk,
+  JobHelpers,
 } from './job.types';
 
 // API types

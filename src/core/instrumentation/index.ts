@@ -3,6 +3,29 @@
  * @module core/instrumentation
  */
 
-export { createLogger, withCorrelationId, withContext, logTiming, logError, createRequestLogger } from './logger';
-export { setupTracing, getTracer, createSpan, withTracing, addSpanEvent, setSpanAttributes, recordSpanException } from './tracing';
-export { setupMetrics, getMeter, JobMetrics, DatabaseMetrics, HttpMetrics, createMetricsCollectors } from './metrics';
+export {
+  createLogger,
+  withCorrelationId,
+  withContext,
+  logTiming,
+  logError,
+  createRequestLogger,
+} from './logger';
+export {
+  setupTracing,
+  getTracer,
+  createSpan,
+  withTracing,
+  addSpanEvent,
+  setSpanAttributes,
+  recordSpanException,
+} from './tracing';
+export {
+  setupMetrics,
+  getMeter,
+  JobMetrics,
+  DatabaseMetrics,
+  HttpMetrics,
+  SchedulerMetrics,
+  createMetricsCollectors,
+} from './metrics';
