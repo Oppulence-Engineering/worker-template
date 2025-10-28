@@ -154,6 +154,39 @@ await postgrest.stop();
 await postgres.stop();
 ```
 
+#### PostGraphile Container
+
+```typescript
+import { createPostgraphileContainer } from './testcontainers/postgraphile';
+import { createPostgresContainer } from './testcontainers/postgres';
+
+const postgres = createPostgresContainer();
+await postgres.start();
+
+const postgraphile = createPostgraphileContainer({
+  config: {
+    databaseUrl: postgres.getConnectionString(),
+    schema: 'public',
+    defaultRole: 'web_anon',
+  },
+});
+
+await postgraphile.start();
+await postgraphile.isHealthy();
+
+const url = postgraphile.getConnectionString();
+const introspection = await fetch(`${url}`, {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({ query: '{ __schema { types { name } } }' }),
+});
+
+const { data } = await introspection.json();
+
+await postgraphile.stop();
+await postgres.stop();
+```
+
 #### Generic Container (Any Docker Image)
 
 ```typescript
