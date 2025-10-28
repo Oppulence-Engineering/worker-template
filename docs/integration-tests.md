@@ -126,6 +126,34 @@ const value = await redis.executeCommand(['GET', 'key']);
 await redis.stop();
 ```
 
+#### PostgREST Container
+
+```typescript
+import { createPostgrestContainer } from './testcontainers/postgrest';
+import { createPostgresContainer } from './testcontainers/postgres';
+
+const postgres = createPostgresContainer();
+await postgres.start();
+
+const postgrest = createPostgrestContainer({
+  config: {
+    dbUri: postgres.getConnectionString(),
+    dbSchema: 'public',
+    dbAnonRole: 'web_anon',
+  },
+});
+
+await postgrest.start();
+await postgrest.isHealthy();
+
+// consume REST API exposed by PostgREST
+const response = await fetch(`${postgrest.getConnectionString()}/orders?limit=5`);
+const orders = await response.json();
+
+await postgrest.stop();
+await postgres.stop();
+```
+
 #### Generic Container (Any Docker Image)
 
 ```typescript
