@@ -3,10 +3,11 @@
  * @module jobs/base/BatchJob
  */
 
-import type { z } from 'zod';
 
 import { BaseJob } from '../../core/abstractions/BaseJob';
-import type { JobContext, BatchConfig } from '../../core/types';
+
+import type { JobContext } from '../../core/types';
+import type { z } from 'zod';
 
 /**
  * Batch processing result
@@ -198,7 +199,7 @@ export abstract class BatchJob<
       // Control concurrency
       if (promises.length >= this.maxConcurrency) {
         await Promise.race(promises);
-        promises.splice(
+        void promises.splice(
           promises.findIndex((p) => p === promise),
           1
         );
@@ -242,8 +243,8 @@ export abstract class BatchJob<
    * Hook called before batch processing starts
    */
   protected async beforeBatchProcessing(
-    items: TItem[],
-    context: JobContext<TMetadata>
+    _items: TItem[],
+    _context: JobContext<TMetadata>
   ): Promise<void> {
     // Override to add custom logic
   }
@@ -252,8 +253,8 @@ export abstract class BatchJob<
    * Hook called after batch processing completes
    */
   protected async afterBatchProcessing(
-    result: BatchResult<TItem, TResult>,
-    context: JobContext<TMetadata>
+    _result: BatchResult<TItem, TResult>,
+    _context: JobContext<TMetadata>
   ): Promise<void> {
     // Override to add custom logic
   }
@@ -262,9 +263,9 @@ export abstract class BatchJob<
    * Hook called when an item fails
    */
   protected async onItemError(
-    item: TItem,
-    error: Error,
-    context: JobContext<TMetadata>
+    _item: TItem,
+    _error: Error,
+    _context: JobContext<TMetadata>
   ): Promise<void> {
     // Override to add custom error handling
   }

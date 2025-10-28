@@ -4,9 +4,10 @@
  */
 
 import { trace, type Span } from '@opentelemetry/api';
+
+import type { AsyncFunction, Result as _Result } from '../types';
 import type { Logger } from 'pino';
 
-import type { AsyncFunction, Result } from '../types';
 
 /**
  * Service dependencies interface
@@ -216,7 +217,7 @@ export abstract class BaseService<TDependencies extends ServiceDependencies = Se
    */
   protected async executeWithResult<TData, TError = ServiceError>(
     operation: AsyncFunction<[], TData>
-  ): Promise<Result<TData, TError>> {
+  ): Promise<_Result<TData, TError>> {
     try {
       const data = await operation();
       return { success: true, data };
@@ -253,11 +254,11 @@ export abstract class BaseService<TDependencies extends ServiceDependencies = Se
    * @returns Entity (non-null)
    * @throws {ServiceError} If entity is null/undefined
    */
-  protected assertExists<T>(
-    entity: T | null | undefined,
+  protected assertExists<_T>(
+    entity: _T | null | undefined,
     resourceName: string,
     id: string
-  ): asserts entity is T {
+  ): asserts entity is _T {
     if (entity === null || entity === undefined) {
       throw ServiceError.notFound(resourceName, id);
     }

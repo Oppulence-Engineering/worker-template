@@ -1,9 +1,5 @@
+import type { FeatureFlagProvider, FeatureFlagProviderFactory } from './types';
 import type { FeatureFlags } from '../config/schema';
-import type {
-  FeatureFlagEvaluationContext,
-  FeatureFlagProvider,
-  FeatureFlagProviderFactory,
-} from './types';
 
 export class StaticFeatureFlagProvider implements FeatureFlagProvider {
   constructor(private readonly flags: Record<string, boolean>) {}

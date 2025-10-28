@@ -3,15 +3,16 @@
  * @module core/scheduler/SchedulerRegistry
  */
 
-import type { Logger } from 'pino';
 import { parseCronItems, type CronItem, type ParsedCronItem } from 'graphile-worker';
 import { z } from 'zod';
+
+import { ScheduledJobAdapter } from './ScheduledJobAdapter';
+import { SchedulerOptionsSchema } from './types';
 
 import type { SchedulerMetrics } from '../instrumentation/metrics';
 import type { IJob, JobName } from '../types';
 import type { ScheduledJobDefinition } from './types';
-import { SchedulerOptionsSchema } from './types';
-import { ScheduledJobAdapter } from './ScheduledJobAdapter';
+import type { Logger } from 'pino';
 
 const EmptyPayloadSchema = z.object({}).passthrough();
 
@@ -168,10 +169,10 @@ export class SchedulerRegistry {
     const schema = definition.payloadSchema ?? EmptyPayloadSchema;
 
     try {
-      const parsed = schema.parse(resolved);
+      const parsed: unknown = schema.parse(resolved);
       return parsed as Record<string, unknown>;
     } catch (error) {
-      metrics?.recordValidationFailure(definition.key, (error as Error).message);
+      metrics?.recordValidationFailure(definition.key, (error as Error).message ?? 'Unknown error');
       throw error;
     }
   }

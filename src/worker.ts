@@ -7,14 +7,12 @@ import { run, type Runner, type RunnerOptions } from 'graphile-worker';
 import { Pool } from 'pg';
 
 import { getConfig, getDatabaseUrl } from './core/config';
+import { FeatureFlagService } from './core/featureFlags';
 import { createLogger } from './core/instrumentation/logger';
 import { createMetricsCollectors, setupMetrics } from './core/instrumentation/metrics';
 import { setupTracing } from './core/instrumentation/tracing';
 import { ScheduleReconciler, SchedulerRegistry } from './core/scheduler';
 import { JobRegistry } from './core/worker/JobRegistry';
-import { FeatureFlagService } from './core/featureFlags';
-
-// Import example jobs
 import { EmailJob } from './jobs/examples/EmailJob';
 import { OrderFulfillmentWorkflow } from './jobs/examples/OrderFulfillmentWorkflow';
 import { ScheduledJobDefinitions } from './jobs/schedules';
@@ -59,17 +57,17 @@ class GracefulShutdown {
   }
 
   setupHandlers(): void {
-    process.on('SIGTERM', () => this.shutdown('SIGTERM'));
-    process.on('SIGINT', () => this.shutdown('SIGINT'));
+    process.on('SIGTERM', () => void this.shutdown('SIGTERM'));
+    process.on('SIGINT', () => void this.shutdown('SIGINT'));
 
     process.on('uncaughtException', (error) => {
       this.logger.fatal({ error }, 'Uncaught exception');
-      this.shutdown('uncaughtException');
+      void this.shutdown('uncaughtException');
     });
 
     process.on('unhandledRejection', (reason) => {
       this.logger.fatal({ reason }, 'Unhandled rejection');
-      this.shutdown('unhandledRejection');
+      void this.shutdown('unhandledRejection');
     });
   }
 }
@@ -101,7 +99,7 @@ async function main(): Promise<void> {
   }
 
   // Create metrics collectors
-  const { jobMetrics, dbMetrics, schedulerMetrics, workflowMetrics } = createMetricsCollectors(
+  const { jobMetrics, schedulerMetrics, workflowMetrics } = createMetricsCollectors(
     config.observability.serviceName
   );
   logger.info('Metrics collectors created');

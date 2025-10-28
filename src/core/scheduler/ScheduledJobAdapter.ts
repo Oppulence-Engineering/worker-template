@@ -3,10 +3,15 @@
  * @module core/scheduler/ScheduledJobAdapter
  */
 
-import type { Span } from '@opentelemetry/api';
-import { z } from 'zod';
 
 import { BaseJob } from '../abstractions/BaseJob';
+
+import {
+  CronMetadataSchema,
+  ScheduledJobMetadataSchema,
+  SchedulerPayloadEnvelopeSchema,
+} from './types';
+
 import type { SchedulerMetrics } from '../instrumentation/metrics';
 import type { JobConfig, JobContext, JobHelpers, JobName } from '../types';
 import type {
@@ -15,11 +20,8 @@ import type {
   ScheduledJobMetadata,
   SchedulerHandlerContext,
 } from './types';
-import {
-  CronMetadataSchema,
-  ScheduledJobMetadataSchema,
-  SchedulerPayloadEnvelopeSchema,
-} from './types';
+import type { Span } from '@opentelemetry/api';
+import type { z } from 'zod';
 
 /**
  * Adapter that wraps a {@link ScheduledJobDefinition} in the {@link BaseJob} lifecycle.
@@ -52,7 +54,8 @@ export class ScheduledJobAdapter<TPayloadSchema extends z.ZodTypeAny, TResult> e
    */
   override validate(payload: unknown): z.infer<TPayloadSchema> {
     const sanitized = this.stripCronMetadata(payload);
-    return this.definition.payloadSchema.parse(sanitized);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+    return this.definition.payloadSchema.parse(sanitized) as z.infer<TPayloadSchema>;
   }
 
   /**

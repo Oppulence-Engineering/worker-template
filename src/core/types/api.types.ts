@@ -3,12 +3,12 @@
  * @module core/types/api
  */
 
+import type { Brand, Prettify, AsyncFunction, Result, JsonObject, Nullable } from './common.types';
 import type { IncomingMessage, ServerResponse } from 'http';
 import type { Pool, PoolClient } from 'pg';
 import type { Logger } from 'pino';
 import type { z } from 'zod';
 
-import type { Brand, Prettify, AsyncFunction, Result, JsonObject, Nullable } from './common.types';
 
 /**
  * User ID - branded string for type safety
@@ -249,7 +249,7 @@ export type GraphQLFieldResolvers<TSource = unknown, TContext = GraphQLContext> 
  */
 export type GraphQLResolverMap<
   TResolvers extends Record<string, GraphQLFieldResolvers>,
-  TContext = GraphQLContext,
+  _TContext = GraphQLContext,
 > = {
   [K in keyof TResolvers]: TResolvers[K];
 };
@@ -258,7 +258,7 @@ export type GraphQLResolverMap<
  * PostGraphile plugin interface
  * @template TContext - GraphQL context type
  */
-export interface PostGraphilePlugin<TContext = GraphQLContext> {
+export interface PostGraphilePlugin<_TContext = GraphQLContext> {
   /** Plugin name */
   name: string;
   /** Plugin version */

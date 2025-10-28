@@ -1,7 +1,8 @@
+import { createStaticProvider } from './StaticProvider';
+
 import type { FeatureFlags } from '../config/schema';
 import type { JobContext } from '../types';
 import type { FeatureFlagEvaluationContext, FeatureFlagProvider } from './types';
-import { createStaticProvider } from './StaticProvider';
 
 export class FeatureFlagService {
   private provider: FeatureFlagProvider;

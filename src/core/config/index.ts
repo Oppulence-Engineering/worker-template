@@ -4,6 +4,7 @@
  */
 
 import { config as loadEnv } from 'dotenv';
+
 import { AppConfigSchema, buildDatabaseUrl, type AppConfig } from './schema';
 
 // Load environment variables
@@ -131,7 +132,7 @@ export function loadConfig(): AppConfig {
     return validatedConfig;
   } catch (error) {
     console.error('Configuration validation failed:', error);
-    throw new Error(`Invalid configuration: ${error}`);
+    throw new Error(`Invalid configuration: ${String(error)}`);
   }
 }
 

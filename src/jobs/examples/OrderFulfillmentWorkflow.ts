@@ -1,7 +1,8 @@
 import { z } from 'zod';
 
-import type { WorkflowMetrics } from '../../core/instrumentation/metrics';
 import { WorkflowJob } from '../../core/workflow';
+
+import type { WorkflowMetrics } from '../../core/instrumentation/metrics';
 import type { JobConfig, JobName } from '../../core/types';
 
 const OrderPayloadSchema = z.object({
@@ -30,10 +31,16 @@ export class OrderFulfillmentWorkflow extends WorkflowJob<
     {
       id: 'reserve-inventory',
       description: 'reserve items for order',
-      execute: async ({ sharedState, payload }) => {
+      execute: async ({
+        sharedState,
+        payload,
+      }: {
+        sharedState: OrderSharedState;
+        payload: z.infer<typeof OrderPayloadSchema>;
+      }) => {
         sharedState.auditTrail.push(`inventory reserved for ${payload.orderId}`);
       },
-      compensate: async ({ sharedState }) => {
+      compensate: async ({ sharedState }: { sharedState: OrderSharedState }) => {
         sharedState.auditTrail.push('inventory released');
       },
     },
@@ -41,11 +48,17 @@ export class OrderFulfillmentWorkflow extends WorkflowJob<
       id: 'capture-payment',
       description: 'charge customer payment method',
       dependsOn: ['reserve-inventory'],
-      execute: async ({ sharedState, payload }) => {
+      execute: async ({
+        sharedState,
+        payload,
+      }: {
+        sharedState: OrderSharedState;
+        payload: z.infer<typeof OrderPayloadSchema>;
+      }) => {
         sharedState.auditTrail.push(`payment captured: ${payload.amount}`);
         sharedState.charged = true;
       },
-      compensate: async ({ sharedState }) => {
+      compensate: async ({ sharedState }: { sharedState: OrderSharedState }) => {
         if (sharedState.charged) {
           sharedState.auditTrail.push('payment refunded');
           sharedState.charged = false;
@@ -56,7 +69,13 @@ export class OrderFulfillmentWorkflow extends WorkflowJob<
       id: 'dispatch-notification',
       description: 'notify order dispatch',
       dependsOn: ['capture-payment'],
-      execute: async ({ sharedState, payload }) => {
+      execute: async ({
+        sharedState,
+        payload,
+      }: {
+        sharedState: OrderSharedState;
+        payload: z.infer<typeof OrderPayloadSchema>;
+      }) => {
         sharedState.auditTrail.push(`order ${payload.orderId} fulfilled`);
       },
     },

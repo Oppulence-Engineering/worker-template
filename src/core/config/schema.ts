@@ -219,5 +219,6 @@ export function buildDatabaseUrl(config: DatabaseConfig): string {
  * Validate partial configuration against schema
  */
 export function validatePartialConfig<T extends z.ZodType>(schema: T, data: unknown): z.infer<T> {
-  return schema.parse(data);
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+  return schema.parse(data) as z.infer<T>;
 }

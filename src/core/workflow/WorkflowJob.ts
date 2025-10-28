@@ -4,11 +4,12 @@
  */
 
 import { randomUUID } from 'node:crypto';
-import { z } from 'zod';
+
 
 import { BaseJob } from '../abstractions/BaseJob';
-import type { JobConfig, JobContext } from '../types';
+
 import type { WorkflowMetrics } from '../instrumentation/metrics';
+import type { JobContext } from '../types';
 import type {
   WorkflowCompensationArgs,
   WorkflowEvent,
@@ -19,6 +20,7 @@ import type {
   WorkflowStepSnapshot,
   WorkflowStepStatus,
 } from './types';
+import type { z } from 'zod';
 
 interface WorkflowRuntimeState<TShared extends Record<string, unknown>> {
   readonly workflowId: string;
@@ -124,7 +126,7 @@ export abstract class WorkflowJob<
     runtime: WorkflowRuntimeState<TSharedState>
   ): Promise<TResult> {
     const lastResult = runtime.stepResults.get(this.steps.at(-1)?.id ?? '') as TResult | undefined;
-    return (lastResult ?? (undefined as TResult)) as TResult;
+    return (lastResult ?? (undefined as TResult));
   }
 
   /**
@@ -229,8 +231,13 @@ export abstract class WorkflowJob<
     error: Error
   ): Promise<void> {
     const compensatableSteps = this.steps
+      // eslint-disable-next-line @typescript-eslint/unbound-method
       .filter((step) => step.compensate)
-      .filter((step) => runtime.stepSnapshots.some((snapshot) => snapshot.id === step.id && snapshot.status === 'completed'))
+      .filter((step) =>
+        runtime.stepSnapshots.some(
+          (snapshot) => snapshot.id === step.id && snapshot.status === 'completed'
+        )
+      )
       .reverse();
 
     for (const step of compensatableSteps) {
@@ -313,14 +320,14 @@ export abstract class WorkflowJob<
   }
 
   private recordStepMetric(jobName: string, stepId: string, outcome: 'success' | 'failure'): void {
-    if ('recordStep' in (this.metrics ?? {})) {
-      (this.metrics as WorkflowMetricsAdapter | WorkflowMetrics).recordStep(jobName, stepId, outcome);
+    if (this.metrics && 'recordStep' in this.metrics) {
+      this.metrics.recordStep(jobName, stepId, outcome);
     }
   }
 
   private recordCompensationMetric(jobName: string, stepId: string): void {
-    if ('recordCompensation' in (this.metrics ?? {})) {
-      (this.metrics as WorkflowMetricsAdapter | WorkflowMetrics).recordCompensation(jobName, stepId);
+    if (this.metrics && 'recordCompensation' in this.metrics) {
+      this.metrics.recordCompensation(jobName, stepId);
     }
   }
 
@@ -329,12 +336,8 @@ export abstract class WorkflowJob<
     durationMs: number,
     outcome: 'success' | 'failure'
   ): void {
-    if ('recordWorkflowCompletion' in (this.metrics ?? {})) {
-      (this.metrics as WorkflowMetricsAdapter | WorkflowMetrics).recordWorkflowCompletion(
-        jobName,
-        durationMs,
-        outcome
-      );
+    if (this.metrics && 'recordWorkflowCompletion' in this.metrics) {
+      this.metrics.recordWorkflowCompletion(jobName, durationMs, outcome);
     }
   }
 }

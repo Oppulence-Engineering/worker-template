@@ -3,11 +3,10 @@
  * @module core/abstractions/BaseJob
  */
 
-import type { Task, JobHelpers } from 'graphile-worker';
 import { trace, type Span } from '@opentelemetry/api';
-import type { Logger } from 'pino';
-import { z, type ZodError } from 'zod';
+import { z } from 'zod';
 
+import type { FeatureFlagService } from '../featureFlags/FeatureFlagService';
 import type {
   JobConfig,
   JobContext,
@@ -18,7 +17,7 @@ import type {
   IJob,
   JobError,
 } from '../types';
-import type { FeatureFlagService } from '../featureFlags/FeatureFlagService';
+import type { Task, JobHelpers } from 'graphile-worker';
 
 /**
  * Abstract base class for all jobs with full generic type safety
@@ -99,7 +98,8 @@ export abstract class BaseJob<
    */
   validate(payload: unknown): z.infer<TPayload> {
     try {
-      return this.schema.parse(payload);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+      return this.schema.parse(payload) as z.infer<TPayload>;
     } catch (error) {
       if (error instanceof z.ZodError) {
         const formattedErrors = error.errors.map((err) => ({
@@ -365,7 +365,12 @@ export abstract class BaseJob<
     }
 
     try {
-      const enabled = await this.featureFlagService.isEnabled(flagKey, this.jobName, payload, context);
+      const enabled = await this.featureFlagService.isEnabled(
+        flagKey,
+        this.jobName,
+        payload,
+        context as JobContext<Record<string, unknown>>
+      );
       return enabled;
     } catch (error) {
       context.logger.warn('Feature flag evaluation failed; defaulting to enabled', {

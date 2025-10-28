@@ -3,14 +3,14 @@
  * @module core/instrumentation/metrics
  */
 
-import { MeterProvider, PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
+import { metrics, type Counter, type Histogram, type Meter } from '@opentelemetry/api';
 import { PrometheusExporter } from '@opentelemetry/exporter-prometheus';
 import { Resource } from '@opentelemetry/resources';
+import { MeterProvider } from '@opentelemetry/sdk-metrics';
 import {
   SEMRESATTRS_SERVICE_NAME,
   SEMRESATTRS_SERVICE_VERSION,
 } from '@opentelemetry/semantic-conventions';
-import { metrics, type Counter, type Histogram, type Meter } from '@opentelemetry/api';
 
 import type { ObservabilityConfig } from '../config/schema';
 
@@ -41,6 +41,7 @@ export function setupMetrics(config: ObservabilityConfig): PrometheusExporter | 
   // Note: Type assertion needed due to version incompatibility with selectCardinalityLimit
   const meterProvider = new MeterProvider({
     resource,
+    // eslint-disable-next-line @typescript-eslint/consistent-type-imports
     readers: [prometheusExporter] as unknown as import('@opentelemetry/sdk-metrics').MetricReader[],
   });
 
@@ -72,7 +73,7 @@ export class JobMetrics {
   private readonly jobRetries: Counter;
   private readonly activeJobs: Counter;
 
-  constructor(serviceName: string) {
+  constructor(_serviceName: string) {
     this.meter = getMeter('graphile-worker', '1.0.0');
 
     // Jobs processed counter
@@ -252,7 +253,7 @@ export class SchedulerMetrics {
   private readonly validationFailures: Counter;
   private readonly customCounters = new Map<string, Counter>();
 
-  constructor(serviceName: string) {
+  constructor(_serviceName: string) {
     this.meter = getMeter('scheduler', '1.0.0');
 
     this.executions = this.meter.createCounter('scheduler_executions_total', {
@@ -346,7 +347,7 @@ export class WorkflowMetrics {
   private readonly compensation: Counter;
   private readonly stepExecutions: Counter;
 
-  constructor(serviceName: string) {
+  constructor(_serviceName: string) {
     this.meter = getMeter('workflow', '1.0.0');
 
     this.executions = this.meter.createCounter('workflow_executions_total', {

@@ -3,20 +3,21 @@
  * @module core/types/job
  */
 
-import type { JobHelpers, Task, Logger as GraphileLogger } from 'graphile-worker';
-import type { FeatureFlagService } from '../featureFlags/FeatureFlagService';
-export type { JobHelpers } from 'graphile-worker';
-import type { Span } from '@opentelemetry/api';
-import type { z } from 'zod';
-
 import type {
   AsyncFunction,
+  Awaitable,
   Brand,
   Constructor,
   Prettify,
-  Result,
-  Awaitable,
+  Result as _Result,
 } from './common.types';
+import type { FeatureFlagService } from '../featureFlags/FeatureFlagService';
+import type { Span } from '@opentelemetry/api';
+import type { JobHelpers, Logger as GraphileLogger, Task } from 'graphile-worker';
+import type { z } from 'zod';
+
+
+export type { JobHelpers } from 'graphile-worker';
 
 /**
  * Job identifier - branded string for type safety
@@ -315,7 +316,7 @@ export type InferJobMetadata<T> = T extends IJob<z.ZodType, unknown, infer M> ? 
  * Infer job configuration from job
  * @template T - Job type
  */
-export type InferJobConfig<T extends IJob> = JobConfig;
+export type InferJobConfig<_T extends IJob> = JobConfig;
 
 /**
  * Job registry map type

@@ -3,9 +3,9 @@
  * @module core/deduplication/helpers
  */
 
+import type { DeduplicatedJobParams, DeduplicationStrategy } from './types';
 import type { AddJobFunction } from 'graphile-worker';
 
-import type { DeduplicatedJobParams, DeduplicationStrategy } from './types';
 
 const DEFAULT_MAX_KEY_LENGTH = 256;
 
@@ -79,7 +79,7 @@ export async function enqueueDeduplicatedJob<TPayload>(
   const strategy = deduplication.strategy ?? 'drop';
   const jobKeyMode = STRATEGY_TO_MODE[strategy] ?? 'unsafe_dedupe';
 
-  await addJob(jobName as any, payload as any, {
+  await addJob(jobName, payload as unknown, {
     ...taskSpec,
     jobKey,
     jobKeyMode,

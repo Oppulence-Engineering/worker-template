@@ -3,15 +3,15 @@
  * @module tests/unit/scheduler
  */
 
-import { describe, it, expect, mock } from 'bun:test';
+import { describe, expect, it, mock } from 'bun:test';
 import { z } from 'zod';
 
-import { SchedulerRegistry } from '../../src/core/scheduler/SchedulerRegistry';
-import { ScheduleReconciler } from '../../src/core/scheduler/ScheduleReconciler';
-import type { ScheduledJobDefinition } from '../../src/core/scheduler';
-import type { SchedulerMetrics } from '../../src/core/instrumentation/metrics';
-import { ScheduledJobAdapter } from '../../src/core/scheduler/ScheduledJobAdapter';
 import { DatabaseError } from 'pg-protocol';
+import type { SchedulerMetrics } from '../../src/core/instrumentation/metrics';
+import type { ScheduledJobDefinition } from '../../src/core/scheduler';
+import { ScheduledJobAdapter } from '../../src/core/scheduler/ScheduledJobAdapter';
+import { ScheduleReconciler } from '../../src/core/scheduler/ScheduleReconciler';
+import { SchedulerRegistry } from '../../src/core/scheduler/SchedulerRegistry';
 
 const TestPayloadSchema = z.object({
   message: z.string(),

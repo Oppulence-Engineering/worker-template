@@ -6,6 +6,7 @@
 import { z } from 'zod';
 
 import { ExponentialRetryJob } from '../base/RetryableJob';
+
 import type { JobConfig, JobContext, JobName, QueueName } from '../../core/types';
 
 const EMAIL_QUEUE: QueueName = 'email' as QueueName;

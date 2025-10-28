@@ -27,11 +27,11 @@ export type WorkflowEventType =
  */
 export interface WorkflowStepSnapshot {
   readonly id: string;
-  readonly status: WorkflowStepStatus;
+  status: WorkflowStepStatus;
   readonly startedAt: Date;
-  readonly completedAt?: Date;
-  readonly durationMs?: number;
-  readonly error?: string;
+  completedAt?: Date;
+  durationMs?: number;
+  error?: string;
 }
 
 /**

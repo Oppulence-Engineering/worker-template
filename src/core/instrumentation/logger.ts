@@ -3,8 +3,9 @@
  * @module core/instrumentation/logger
  */
 
-import pino, { type Logger } from 'pino';
 import { randomUUID } from 'crypto';
+
+import pino, { type Logger } from 'pino';
 
 import type { LoggingConfig } from '../config/schema';
 import type { CorrelationId } from '../types';
@@ -21,8 +22,8 @@ export function createLogger(config: LoggingConfig, serviceName: string): Logger
     formatters: {
       level: (label) => ({ level: label }),
       bindings: (bindings) => ({
-        pid: bindings.pid,
-        hostname: bindings.hostname,
+        pid: bindings.pid as number,
+        hostname: bindings.hostname as string,
       }),
     },
     serializers: {
@@ -50,7 +51,7 @@ export function createLogger(config: LoggingConfig, serviceName: string): Logger
           singleLine: false,
           messageFormat: '[{service}] {msg}',
         },
-      })
+      }) as pino.DestinationStream
     );
   }
 

@@ -3,12 +3,12 @@
  * @module core/worker/JobRegistry
  */
 
+import type { FeatureFlagService } from '../featureFlags/FeatureFlagService';
+import type { IJob, JobName } from '../types';
 import type { TaskList } from 'graphile-worker';
 import type { Logger } from 'pino';
 import type { z } from 'zod';
 
-import type { IJob, JobName } from '../types';
-import type { FeatureFlagService } from '../featureFlags/FeatureFlagService';
 
 type RegisteredJob = IJob<z.ZodTypeAny, unknown, Record<string, unknown>>;
 
@@ -27,7 +27,7 @@ type RegisteredJob = IJob<z.ZodTypeAny, unknown, Record<string, unknown>>;
  * const emailJob = registry.getJob('send-email' as JobName);
  * ```
  */
-export class JobRegistry<TJobMap extends Record<string, IJob> = Record<string, IJob>> {
+export class JobRegistry<_TJobMap extends Record<string, IJob> = Record<string, IJob>> {
   /**
    * Map of job name to job instance
    */

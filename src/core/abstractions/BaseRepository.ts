@@ -3,19 +3,19 @@
  * @module core/abstractions/BaseRepository
  */
 
-import type { Pool, PoolClient, QueryResult, QueryResultRow } from 'pg';
-import type { Logger } from 'pino';
 import { trace, type Span } from '@opentelemetry/api';
-import type { z } from 'zod';
 
 import type {
-  PaginationParams,
-  PaginatedResponse,
-  Filter,
-  Result,
-  Nullable,
   Brand,
+  Filter,
+  Nullable,
+  PaginatedResponse,
+  PaginationParams,
 } from '../types';
+import type { Pool, PoolClient, QueryResult, QueryResultRow } from 'pg';
+import type { Logger } from 'pino';
+import type { z } from 'zod';
+
 
 /**
  * Entity ID type
@@ -604,8 +604,10 @@ export abstract class BaseRepository<
     values: unknown[];
   } {
     const entries = Object.entries(criteria);
-    const whereClause = entries.map(([key], i) => `${this.toColumnName(key)} = $${i + 1}`);
-    const values = entries.map(([, value]) => value);
+    const whereClause = entries.map(
+      ([key], i) => `${this.toColumnName(key)} = $${i + 1}`
+    );
+    const values: unknown[] = entries.map(([, value]) => value as unknown);
 
     return { whereClause, values };
   }
@@ -657,15 +659,15 @@ export abstract class BaseRepository<
           break;
         case 'contains':
           whereClause.push(`${this.toColumnName(filter.field)} ILIKE $${paramIndex}`);
-          values.push(`%${filter.value}%`);
+          values.push(`%${String(filter.value)}%`);
           break;
         case 'startsWith':
           whereClause.push(`${this.toColumnName(filter.field)} ILIKE $${paramIndex}`);
-          values.push(`${filter.value}%`);
+          values.push(`${String(filter.value)}%`);
           break;
         case 'endsWith':
           whereClause.push(`${this.toColumnName(filter.field)} ILIKE $${paramIndex}`);
-          values.push(`%${filter.value}`);
+          values.push(`%${String(filter.value)}`);
           break;
         case 'isNull':
           whereClause.push(`${this.toColumnName(filter.field)} IS NULL`);
@@ -760,7 +762,7 @@ export abstract class BaseRepository<
 
   private toOrderByClause(orderBy: string): string {
     const parts = orderBy.trim().split(/\s+/);
-    const column = this.toColumnName(parts[0]);
+    const column = this.toColumnName(parts[0] ?? '');
 
     if (parts.length > 1) {
       return `${column} ${parts.slice(1).join(' ')}`;

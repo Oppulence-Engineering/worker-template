@@ -5,11 +5,11 @@
 
 import { DatabaseError } from 'pg-protocol';
 
+import type { ScheduledJobDefinition } from './types';
+import type { SchedulerMetrics } from '../instrumentation/metrics';
 import type { Pool, PoolClient } from 'pg';
 import type { Logger } from 'pino';
 import type { ZodTypeAny } from 'zod';
-import type { SchedulerMetrics } from '../instrumentation/metrics';
-import type { ScheduledJobDefinition } from './types';
 
 interface KnownCrontab {
   identifier: string;

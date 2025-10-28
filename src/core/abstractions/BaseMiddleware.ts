@@ -5,8 +5,8 @@
 
 import { trace, type Span } from '@opentelemetry/api';
 
-import type { Logger } from 'pino';
 import type { AsyncFunction } from '../types';
+import type { Logger } from 'pino';
 
 /**
  * Middleware context interface
@@ -161,7 +161,7 @@ export abstract class BaseMiddleware<TContext = unknown, TResult = unknown>
    * @param context - Middleware context
    * @param span - OpenTelemetry span
    */
-  protected async before(context: MiddlewareContext<TContext>, span: Span): Promise<void> {
+  protected async before(context: MiddlewareContext<TContext>, _span: Span): Promise<void> {
     context.logger.debug(
       { middleware: this.middlewareName },
       `Executing middleware: ${this.middlewareName}`
@@ -177,8 +177,8 @@ export abstract class BaseMiddleware<TContext = unknown, TResult = unknown>
    */
   protected async after(
     context: MiddlewareContext<TContext>,
-    result: TResult,
-    span: Span
+    _result: TResult,
+    _span: Span
   ): Promise<void> {
     context.logger.debug(
       { middleware: this.middlewareName },
@@ -196,7 +196,7 @@ export abstract class BaseMiddleware<TContext = unknown, TResult = unknown>
   protected async onError(
     context: MiddlewareContext<TContext>,
     error: Error,
-    span: Span
+    _span: Span
   ): Promise<void> {
     context.logger.error(
       {

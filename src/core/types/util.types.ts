@@ -3,9 +3,9 @@
  * @module core/types/util
  */
 
+import type { Constructor, AsyncFunction } from './common.types';
 import type { z } from 'zod';
 
-import type { Constructor, AsyncFunction } from './common.types';
 
 /**
  * Conditional type helpers
@@ -464,9 +464,10 @@ export type RecursionDepth = [never, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 /**
  * Intrinsic namespace for built-in string manipulation
  */
+// eslint-disable-next-line @typescript-eslint/no-namespace
 declare namespace Intrinsic {
-  type Uppercase<S extends string> = string;
-  type Lowercase<S extends string> = string;
-  type Capitalize<S extends string> = string;
-  type Uncapitalize<S extends string> = string;
+  type Uppercase<_S extends string> = string;
+  type Lowercase<_S extends string> = string;
+  type Capitalize<_S extends string> = string;
+  type Uncapitalize<_S extends string> = string;
 }

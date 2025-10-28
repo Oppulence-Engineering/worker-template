@@ -3,16 +3,16 @@
  * @module core/scheduler/types
  */
 
-import type {
-  AddJobFunction,
-  Logger as GraphileLogger,
-  JobHelpers,
-  TaskSpec,
-} from 'graphile-worker';
-import type { Logger } from 'pino';
 import { z } from 'zod';
 
 import type { JobName, JobPriority, QueueName } from '../types';
+import type {
+  AddJobFunction,
+  JobHelpers,
+  Logger as GraphileLogger,
+  TaskSpec,
+} from 'graphile-worker';
+
 
 /**
  * Zod schema capturing Graphile Worker's cron metadata shape.
@@ -147,6 +147,7 @@ export interface ScheduledJobDefinition<TPayloadSchema extends z.ZodTypeAny, TRe
 /**
  * Helper options for scheduling one-off executions.
  */
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface ScheduleOnceOptions extends TaskSpec {}
 
 /**
