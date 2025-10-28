@@ -16,6 +16,7 @@ import { JobRegistry } from './core/worker/JobRegistry';
 import { EmailJob } from './jobs/examples/EmailJob';
 import { OrderFulfillmentWorkflow } from './jobs/examples/OrderFulfillmentWorkflow';
 import { ScheduledJobDefinitions } from './jobs/schedules';
+import { createPostgraphileServer, type PostgraphileServer } from './api/postgraphileServer';
 
 /**
  * Graceful shutdown handler
@@ -26,8 +27,13 @@ class GracefulShutdown {
   constructor(
     private runner: Runner,
     private logger: ReturnType<typeof createLogger>,
-    private timeout: number = 30000
+    private timeout: number = 30000,
+    private cleanupHooks: Array<() => Promise<void>> = []
   ) {}
+
+  addCleanupHook(hook: () => Promise<void>): void {
+    this.cleanupHooks.push(hook);
+  }
 
   async shutdown(signal: string): Promise<void> {
     if (this.shutdownInProgress) {
@@ -46,6 +52,14 @@ class GracefulShutdown {
     try {
       this.logger.info('Stopping worker runner');
       await this.runner.stop();
+
+      for (const hook of this.cleanupHooks) {
+        try {
+          await hook();
+        } catch (hookError) {
+          this.logger.error({ error: hookError }, 'Error when executing shutdown hook');
+        }
+      }
 
       clearTimeout(shutdownTimer);
       this.logger.info('Graceful shutdown complete');
@@ -105,8 +119,9 @@ async function main(): Promise<void> {
   logger.info('Metrics collectors created');
 
   // Create database pool
+  const databaseUrl = getDatabaseUrl(config);
   const pool = new Pool({
-    connectionString: getDatabaseUrl(config),
+    connectionString: databaseUrl,
     max: config.database.maxConnections,
     idleTimeoutMillis: config.database.idleTimeoutMillis,
     connectionTimeoutMillis: config.database.connectionTimeoutMillis,
@@ -174,9 +189,15 @@ async function main(): Promise<void> {
   const stats = registry.getStats();
   logger.info(stats, 'Jobs registered');
 
+  let postgraphileServer: PostgraphileServer | null = null;
+  if (config.graphql.enabled) {
+    postgraphileServer = createPostgraphileServer(databaseUrl, config.graphql, logger);
+    await postgraphileServer.start();
+  }
+
   // Configure Graphile Worker
   const runnerOptions: RunnerOptions = {
-    connectionString: getDatabaseUrl(config),
+    connectionString: databaseUrl,
     concurrency: config.worker.concurrency,
     pollInterval: config.worker.pollInterval,
     schema: config.worker.schema,
@@ -249,6 +270,11 @@ async function main(): Promise<void> {
 
   // Setup graceful shutdown
   const shutdown = new GracefulShutdown(runner, logger);
+  if (postgraphileServer) {
+    shutdown.addCleanupHook(async () => {
+      await postgraphileServer!.stop();
+    });
+  }
   shutdown.setupHandlers();
 
   logger.info('Worker is ready to process jobs');

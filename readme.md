@@ -25,6 +25,7 @@
 - **Workflow Orchestration**: Multi-step workflows with compensation logic (Saga pattern)
 - **Job Deduplication**: Prevent duplicate job execution with configurable strategies
 - **Feature Flags**: Job-level feature flag gating for controlled rollouts
+- **GraphQL API**: Optional PostGraphile server exposed straight from the worker process
 - **Graceful Shutdown**: Proper signal handling and job completion
 - **Health Checks**: Kubernetes-ready liveness and readiness probes
 - **Dependency Injection**: Service layer with full DI support
@@ -404,6 +405,13 @@ DB_MAX_CONNECTIONS=10
 WORKER_CONCURRENCY=5
 WORKER_POLL_INTERVAL=1000
 
+# GraphQL / PostGraphile
+GRAPHQL_ENABLED=false
+GRAPHQL_PORT=5000
+GRAPHQL_SCHEMA=public
+GRAPHQL_DEFAULT_ROLE=web_anon
+# GRAPHQL_JWT_SECRET=supersecret
+
 # Observability
 SERVICE_NAME=graphile-worker-template
 SERVICE_VERSION=1.0.0
@@ -747,4 +755,3 @@ Tests include:
 - Multi-container orchestration with ContainerRegistry
 
 See [tests/readme.md](tests/readme.md) for complete testcontainer documentation.
-

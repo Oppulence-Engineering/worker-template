@@ -112,6 +112,11 @@ export const GraphQLConfigSchema = z.object({
   enabled: z.boolean().default(false).describe('Enable GraphQL API server'),
   port: z.number().int().min(1).max(65535).default(5000).describe('GraphQL server port'),
   path: z.string().default('/graphql').describe('GraphQL endpoint path'),
+  schema: z.union([z.string(), z.array(z.string())]).default('public').describe('Database schema(s) exposed by PostGraphile'),
+  defaultRole: z
+    .string()
+    .default('web_anon')
+    .describe('Database role used when no JWT is provided'),
   graphiql: z.boolean().default(true).describe('Enable GraphiQL interface'),
   watch: z.boolean().default(false).describe('Watch database for schema changes'),
   enhanceGraphiql: z.boolean().default(true).describe('Enhance GraphiQL with additional features'),
@@ -126,6 +131,7 @@ export const GraphQLConfigSchema = z.object({
     .default('app.jwt_token')
     .describe('PostgreSQL type identifier for JWT token'),
   enableIntrospection: z.boolean().default(true).describe('Enable GraphQL introspection'),
+  ownerConnectionString: z.string().optional().describe('Optional owner connection string with elevated privileges'),
 });
 
 /**
