@@ -16,7 +16,20 @@ import { ScheduledJobAdapter } from './ScheduledJobAdapter';
 const EmptyPayloadSchema = z.object({}).passthrough();
 
 /**
- * Registry for scheduled job definitions.
+ * Registry responsible for owning and reconciling {@link ScheduledJobDefinition} instances.
+ *
+ * @remarks
+ * Typical usage inside worker bootstrap:
+ *
+ * ```ts
+ * const registry = new SchedulerRegistry(logger);
+ * registry.register(nightlyReportJob);
+ *
+ * const scheduledJobs = registry.createJobs(schedulerMetrics);
+ * registry.registerMany(otherWorkflows);
+ *
+ * const cronItems = await registry.compileCronItems();
+ * ```
  */
 export class SchedulerRegistry {
   private readonly definitions = new Map<JobName, ScheduledJobDefinition<z.ZodTypeAny, unknown>>();
@@ -28,6 +41,16 @@ export class SchedulerRegistry {
 
   /**
    * Register a single scheduled job definition.
+   *
+   * @example
+   * ```ts
+   * registry.register({
+   *   key: 'cleanup',
+   *   cron: '0 3 * * *',
+   *   payloadSchema: CleanupPayloadSchema,
+   *   handler: cleanupStaleData,
+   * });
+   * ```
    */
   register<TPayloadSchema extends z.ZodTypeAny, TResult>(
     definition: ScheduledJobDefinition<TPayloadSchema, TResult>
@@ -43,7 +66,15 @@ export class SchedulerRegistry {
   }
 
   /**
-   * Register multiple scheduled job definitions.
+   * Register multiple scheduled job definitions at once.
+   *
+   * @example
+   * ```ts
+   * registry.registerMany([
+   *   nightlyReportJob,
+   *   customerSummaryJob,
+   * ]);
+   * ```
    */
   registerMany(definitions: Array<ScheduledJobDefinition<z.ZodTypeAny, unknown>>): this {
     definitions.forEach((definition) => this.register(definition));
@@ -51,14 +82,18 @@ export class SchedulerRegistry {
   }
 
   /**
-   * Retrieve all registered definitions.
+   * Retrieve all registered definitions in insertion order.
    */
   getDefinitions(): ScheduledJobDefinition<z.ZodTypeAny, unknown>[] {
     return Array.from(this.definitions.values());
   }
 
   /**
-   * Create Graphile Worker jobs for all scheduled definitions.
+   * Instantiate Graphile Worker task implementations for every registered schedule.
+   *
+   * @remarks
+   * The returned jobs can be fed to {@link JobRegistry.registerMany} or used
+   * directly when building the worker task list.
    */
   createJobs(
     metrics: SchedulerMetrics
@@ -74,8 +109,17 @@ export class SchedulerRegistry {
   }
 
   /**
-   * Build CronItem representations for all definitions and validate them using Graphile Worker.
-   */
+   * Build {@link CronItem} representations for every definition and validate
+   * them using Graphile Worker helpers.
+   *
+  * @remarks
+  * The resulting {@link ParsedCronItem} array can be supplied to the Graphile worker runner:
+  *
+  * ```ts
+  * const cronItems = await registry.compileCronItems();
+  * await run({ ...runnerOptions, parsedCronItems: cronItems });
+  * ```
+  */
   async compileCronItems(metrics?: SchedulerMetrics): Promise<ParsedCronItem[]> {
     const cronItems: CronItem[] = [];
 
@@ -107,6 +151,11 @@ export class SchedulerRegistry {
     return parseCronItems(cronItems);
   }
 
+  /**
+   * Resolve and validate the payload that will be scheduled for a cron entry.
+   *
+   * @throws {Error} When payloadFactory output fails schema validation.
+   */
   private async resolvePayload<TPayloadSchema extends z.ZodTypeAny, TResult>(
     definition: ScheduledJobDefinition<TPayloadSchema, TResult>,
     metrics?: SchedulerMetrics
