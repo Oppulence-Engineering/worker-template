@@ -272,6 +272,8 @@ create table if not exists app.scheduled_job_events (
 - Provide `DeduplicationConfig` with key extractor to skip duplicate enqueues within TTL.
 - Store fingerprint in Redis/Postgres; on conflict, log and drop or extend schedule.
 - Ensure idempotency keys align with Graphile Worker `job_key`.
+- `enqueueDeduplicatedJob` helper computes deterministic keys, bucketed by optional TTL window, and maps strategies to Graphile's `job_key_mode`.
+- New `tests/unit/deduplication.test.ts` covers key generation, truncation, and enqueue behavior (drop/replace).
 
 ### 7. Pre-built Grafana Dashboards
 - Ship dashboards (JSON) covering throughput, latency, queue depth, error rates, worker utilization.
