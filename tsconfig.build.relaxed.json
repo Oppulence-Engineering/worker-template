@@ -9,7 +9,10 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false,
-    "strictPropertyInitialization": false
+    "strictPropertyInitialization": false,
+    "exactOptionalPropertyTypes": false,
+    "useUnknownInCatchVariables": false,
+    "verbatimModuleSyntax": false
   },
   "include": [
     "src/**/*"

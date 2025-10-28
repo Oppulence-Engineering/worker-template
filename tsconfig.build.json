@@ -5,8 +5,7 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "allowImportingTsExtensions": false,
-    "exactOptionalPropertyTypes": true
+    "allowImportingTsExtensions": false
   },
   "include": [
     "src/**/*"
