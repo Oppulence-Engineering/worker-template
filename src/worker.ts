@@ -15,6 +15,7 @@ import { JobRegistry } from './core/worker/JobRegistry';
 
 // Import example jobs
 import { EmailJob } from './jobs/examples/EmailJob';
+import { OrderFulfillmentWorkflow } from './jobs/examples/OrderFulfillmentWorkflow';
 import { ScheduledJobDefinitions } from './jobs/schedules';
 
 /**
@@ -99,7 +100,7 @@ async function main(): Promise<void> {
   }
 
   // Create metrics collectors
-  const { jobMetrics, dbMetrics, schedulerMetrics } = createMetricsCollectors(
+  const { jobMetrics, dbMetrics, schedulerMetrics, workflowMetrics } = createMetricsCollectors(
     config.observability.serviceName
   );
   logger.info('Metrics collectors created');
@@ -145,6 +146,7 @@ async function main(): Promise<void> {
   // Register jobs
   logger.info('Registering jobs...');
   registry.register(new EmailJob());
+  registry.register(new OrderFulfillmentWorkflow(workflowMetrics));
   registry.registerMany(scheduledJobs);
   // Add more jobs here:
   // registry.register(new DataProcessingJob());

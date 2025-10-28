@@ -337,6 +337,54 @@ export class SchedulerMetrics {
 }
 
 /**
+ * Workflow metrics collector
+ */
+export class WorkflowMetrics {
+  private readonly meter: Meter;
+  private readonly executions: Counter;
+  private readonly duration: Histogram;
+  private readonly compensation: Counter;
+  private readonly stepExecutions: Counter;
+
+  constructor(serviceName: string) {
+    this.meter = getMeter('workflow', '1.0.0');
+
+    this.executions = this.meter.createCounter('workflow_executions_total', {
+      description: 'Total number of workflow executions',
+      unit: '1',
+    });
+
+    this.duration = this.meter.createHistogram('workflow_duration_seconds', {
+      description: 'Workflow execution duration',
+      unit: 's',
+    });
+
+    this.compensation = this.meter.createCounter('workflow_compensation_total', {
+      description: 'Total number of workflow compensation steps executed',
+      unit: '1',
+    });
+
+    this.stepExecutions = this.meter.createCounter('workflow_step_total', {
+      description: 'Total number of workflow steps executed',
+      unit: '1',
+    });
+  }
+
+  recordWorkflowCompletion(jobName: string, durationMs: number, outcome: 'success' | 'failure'): void {
+    this.executions.add(1, { job_name: jobName, outcome });
+    this.duration.record(durationMs / 1000, { job_name: jobName, outcome });
+  }
+
+  recordStep(jobName: string, stepId: string, outcome: 'success' | 'failure'): void {
+    this.stepExecutions.add(1, { job_name: jobName, step_id: stepId, outcome });
+  }
+
+  recordCompensation(jobName: string, stepId: string): void {
+    this.compensation.add(1, { job_name: jobName, step_id: stepId });
+  }
+}
+
+/**
  * Create all metrics collectors
  */
 export function createMetricsCollectors(serviceName: string): {
@@ -344,11 +392,13 @@ export function createMetricsCollectors(serviceName: string): {
   dbMetrics: DatabaseMetrics;
   httpMetrics: HttpMetrics;
   schedulerMetrics: SchedulerMetrics;
+  workflowMetrics: WorkflowMetrics;
 } {
   return {
     jobMetrics: new JobMetrics(serviceName),
     dbMetrics: new DatabaseMetrics(),
     httpMetrics: new HttpMetrics(),
     schedulerMetrics: new SchedulerMetrics(serviceName),
+    workflowMetrics: new WorkflowMetrics(serviceName),
   };
 }

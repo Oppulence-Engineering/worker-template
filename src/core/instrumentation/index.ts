@@ -27,5 +27,6 @@ export {
   DatabaseMetrics,
   HttpMetrics,
   SchedulerMetrics,
+  WorkflowMetrics,
   createMetricsCollectors,
 } from './metrics';

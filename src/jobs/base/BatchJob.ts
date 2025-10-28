@@ -66,7 +66,7 @@ export abstract class BatchJob<
   TPayload extends z.ZodType,
   TItem,
   TResult = void,
-  TMetadata = Record<string, unknown>
+  TMetadata = Record<string, unknown>,
 > extends BaseJob<TPayload, BatchResult<TItem, TResult>, TMetadata> {
   /**
    * Batch size for processing
@@ -116,7 +116,10 @@ export abstract class BatchJob<
     const items = this.extractItems(payload);
     const total = items.length;
 
-    context.logger.info('Starting batch processing', { totalItems: total, batchSize: this.batchSize });
+    context.logger.info('Starting batch processing', {
+      totalItems: total,
+      batchSize: this.batchSize,
+    });
 
     context.span.setAttributes({
       'batch.total_items': total,
@@ -138,10 +141,11 @@ export abstract class BatchJob<
       const batchNumber = Math.floor(i / this.batchSize) + 1;
       const totalBatches = Math.ceil(total / this.batchSize);
 
-      context.logger.info(
-        `Processing batch ${batchNumber}/${totalBatches}`,
-        { batchNumber, totalBatches, batchSize: batch.length }
-      );
+      context.logger.info(`Processing batch ${batchNumber}/${totalBatches}`, {
+        batchNumber,
+        totalBatches,
+        batchSize: batch.length,
+      });
 
       try {
         await this.processBatch(batch, result, context);
@@ -161,15 +165,12 @@ export abstract class BatchJob<
     }
 
     // Log final results
-    context.logger.info(
-      'Batch processing complete',
-      {
-        total,
-        successful: result.successCount,
-        failed: result.failureCount,
-        successRate: (result.successCount / total) * 100,
-      }
-    );
+    context.logger.info('Batch processing complete', {
+      total,
+      successful: result.successCount,
+      failed: result.failureCount,
+      successRate: (result.successCount / total) * 100,
+    });
 
     context.span.setAttributes({
       'batch.success_count': result.successCount,
@@ -226,13 +227,10 @@ export abstract class BatchJob<
       result.failed.push({ item, error: err });
       result.failureCount++;
 
-      context.logger.warn(
-        'Failed to process item',
-        {
-          item,
-          error: err.message,
-        }
-      );
+      context.logger.warn('Failed to process item', {
+        item,
+        error: err.message,
+      });
 
       if (this.errorStrategy === 'fail-fast') {
         throw err;
