@@ -87,7 +87,9 @@ bun run scripts/enqueue-test-jobs.ts
 - **Prometheus** (Metrics): http://localhost:9091
 - **Grafana** (Dashboards): http://localhost:3000 (admin/admin)
 - **Worker Metrics**: http://localhost:9090/metrics
-- **Worker Health**: http://localhost:8080/health
+- **Worker Health**: http://localhost:8080/health (`/health/ready` and `/health/live` available)
+- **GraphQL API**: http://localhost:5050/graphql (POST only)
+- **GraphiQL UI**: http://localhost:5050/graphiql
 
 ## 🏗 Architecture
 
@@ -410,6 +412,7 @@ GRAPHQL_ENABLED=false
 GRAPHQL_PORT=5000
 GRAPHQL_SCHEMA=public
 GRAPHQL_DEFAULT_ROLE=web_anon
+GRAPHQL_GRAPHIQL_ROUTE=/graphiql
 # GRAPHQL_JWT_SECRET=supersecret
 
 # Observability
@@ -461,6 +464,15 @@ All logs are structured JSON with correlation IDs:
   "msg": "Job started"
 }
 ```
+
+### Health Endpoints
+
+A lightweight HTTP server exposes Kubernetes-friendly probes:
+
+- `GET /health` &mdash; aggregate status (200 when liveness and readiness both pass)
+- `GET /health/ready` &mdash; readiness probe (200 once the worker and PostGraphile are ready)
+- `GET /health/live` &mdash; liveness probe (200 while the process is healthy)
+- `HEAD` requests return status-only responses for all health routes.
 
 ## 🐳 Docker Deployment
 

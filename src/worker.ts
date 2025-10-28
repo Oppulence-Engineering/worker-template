@@ -17,6 +17,7 @@ import { EmailJob } from './jobs/examples/EmailJob';
 import { OrderFulfillmentWorkflow } from './jobs/examples/OrderFulfillmentWorkflow';
 import { ScheduledJobDefinitions } from './jobs/schedules';
 import { createPostgraphileServer, type PostgraphileServer } from './api/postgraphileServer';
+import { createHealthServer, type HealthServer } from './api/healthServer';
 
 /**
  * Graceful shutdown handler
@@ -117,6 +118,12 @@ async function main(): Promise<void> {
     config.observability.serviceName
   );
   logger.info('Metrics collectors created');
+
+  let healthServer: HealthServer | null = null;
+  if (config.healthCheck.enabled) {
+    healthServer = createHealthServer(config.healthCheck, logger);
+    await healthServer.start();
+  }
 
   // Create database pool
   const databaseUrl = getDatabaseUrl(config);
@@ -268,11 +275,22 @@ async function main(): Promise<void> {
     );
   });
 
+  if (healthServer) {
+    healthServer.setReadiness(true);
+  }
+
   // Setup graceful shutdown
   const shutdown = new GracefulShutdown(runner, logger);
   if (postgraphileServer) {
     shutdown.addCleanupHook(async () => {
       await postgraphileServer!.stop();
+    });
+  }
+  if (healthServer) {
+    shutdown.addCleanupHook(async () => {
+      healthServer!.setReadiness(false);
+      healthServer!.setLiveness(false);
+      await healthServer!.stop();
     });
   }
   shutdown.setupHandlers();

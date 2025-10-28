@@ -11,7 +11,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - '5432:5432'
+      - '55432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -50,9 +50,14 @@ services:
       SERVICE_NAME: graphile-worker-template
       SERVICE_VERSION: 1.0.0
       ENVIRONMENT: development
+      GRAPHQL_ENABLED: 'true'
+      GRAPHQL_PORT: 5000
+      GRAPHQL_SCHEMA: public
+      GRAPHQL_DEFAULT_ROLE: web_anon
     ports:
       - '8080:8080' # Health check
-      - '9090:9090' # Metrics
+      - '9100:9090' # Metrics
+      - '5050:5000' # GraphQL API
     volumes:
       - ./migrations:/app/migrations:ro
     networks:
@@ -71,9 +76,9 @@ services:
     environment:
       COLLECTOR_OTLP_ENABLED: 'true'
     ports:
-      - '16686:16686' # Jaeger UI
-      - '4317:4317' # OTLP gRPC
-      - '4318:4318' # OTLP HTTP
+      - '16687:16686' # Jaeger UI
+      - '14317:4317' # OTLP gRPC (host port adjusted to avoid conflicts)
+      - '14318:4318' # OTLP HTTP (host port adjusted to avoid conflicts)
     networks:
       - graphile-network
 
@@ -112,7 +117,7 @@ services:
       - ./docker/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
       - ./docker/grafana/datasources:/etc/grafana/provisioning/datasources:ro
     ports:
-      - '3000:3000' # Grafana UI
+      - '3001:3000' # Grafana UI
     networks:
       - graphile-network
     depends_on:

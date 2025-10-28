@@ -2,6 +2,20 @@
 -- This migration sets up the Graphile Worker schema and tables
 -- For more information, see: https://worker.graphile.org/
 
+-- Ensure anonymous web role exists for PostGraphile
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_roles WHERE rolname = 'web_anon'
+  ) THEN
+    CREATE ROLE web_anon NOLOGIN;
+  END IF;
+END;
+$$;
+
+-- Allow the app user to SET ROLE to web_anon
+GRANT web_anon TO postgres;
+
 -- Create Graphile Worker schema if it doesn't exist
 CREATE SCHEMA IF NOT EXISTS graphile_worker;
 

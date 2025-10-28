@@ -20,6 +20,7 @@ export function createPostgraphileServer(
   const postgraphileOptions: PostGraphileOptions = {
     dynamicJson: true,
     graphqlRoute: config.path,
+    graphiqlRoute: config.graphiqlRoute,
     graphiql: config.graphiql,
     enhanceGraphiql: config.enhanceGraphiql,
     enableQueryBatching: config.enableQueryBatching,
@@ -56,11 +57,27 @@ export function createPostgraphileServer(
       const middleware = postgraphile(databaseUrl, config.schema, postgraphileOptions);
 
       server = http.createServer((req, res) => {
+        if (req.method === 'GET' && req.url) {
+          const [requestPath] = req.url.split('?', 1);
+          if (
+            requestPath === config.path &&
+            config.graphiql &&
+            config.graphiqlRoute !== config.path
+          ) {
+            res.statusCode = 302;
+            res.setHeader('Location', config.graphiqlRoute);
+            res.end();
+            return;
+          }
+        }
         middleware(req, res);
       });
 
       await new Promise<void>((resolve) => server!.listen(config.port, resolve));
-      logger.info({ port: config.port, path: config.path }, 'PostGraphile server started');
+      logger.info(
+        { port: config.port, path: config.path, graphiqlRoute: config.graphiqlRoute },
+        'PostGraphile server started'
+      );
     },
     async stop() {
       if (!server) {

@@ -95,6 +95,7 @@ export function loadConfig(): AppConfig {
       enabled: parseBoolean(process.env.GRAPHQL_ENABLED, false),
       port: parseNumber(process.env.GRAPHQL_PORT, 5000),
       path: process.env.GRAPHQL_PATH ?? '/graphql',
+      graphiqlRoute: process.env.GRAPHQL_GRAPHIQL_ROUTE ?? '/graphiql',
       graphiql: parseBoolean(process.env.GRAPHQL_GRAPHIQL, true),
       watch: parseBoolean(process.env.GRAPHQL_WATCH, false),
       enhanceGraphiql: parseBoolean(process.env.GRAPHQL_ENHANCE_GRAPHIQL, true),

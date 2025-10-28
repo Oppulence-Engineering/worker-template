@@ -112,6 +112,10 @@ export const GraphQLConfigSchema = z.object({
   enabled: z.boolean().default(false).describe('Enable GraphQL API server'),
   port: z.number().int().min(1).max(65535).default(5000).describe('GraphQL server port'),
   path: z.string().default('/graphql').describe('GraphQL endpoint path'),
+  graphiqlRoute: z
+    .string()
+    .default('/graphiql')
+    .describe('Route serving the GraphiQL interface'),
   schema: z.union([z.string(), z.array(z.string())]).default('public').describe('Database schema(s) exposed by PostGraphile'),
   defaultRole: z
     .string()
