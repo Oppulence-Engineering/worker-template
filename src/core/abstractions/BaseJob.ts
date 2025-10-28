@@ -18,6 +18,7 @@ import type {
   IJob,
   JobError,
 } from '../types';
+import type { FeatureFlagService } from '../featureFlags/FeatureFlagService';
 
 /**
  * Abstract base class for all jobs with full generic type safety
@@ -74,6 +75,7 @@ export abstract class BaseJob<
    * Tracer instance for this job
    */
   private readonly tracer = trace.getTracer('graphile-worker');
+  private featureFlagService?: FeatureFlagService;
 
   /**
    * Main execution method - must be implemented by subclasses
@@ -83,6 +85,10 @@ export abstract class BaseJob<
    * @returns Execution result
    */
   abstract execute(payload: z.infer<TPayload>, context: JobContext<TMetadata>): Promise<TResult>;
+
+  setFeatureFlagService(service: FeatureFlagService | undefined): void {
+    this.featureFlagService = service;
+  }
 
   /**
    * Validate job payload against schema
@@ -287,6 +293,14 @@ export abstract class BaseJob<
         // Validate payload
         const validatedPayload = this.validate(payload);
 
+        if (!(await this.shouldExecute(validatedPayload, context))) {
+          context.logger.info('Skipping job due to feature flag disabled', {
+            jobName: this.jobName,
+            jobId: context.jobId,
+          });
+          return undefined;
+        }
+
         // Execute lifecycle hooks
         await this.beforeExecute(validatedPayload, context);
 
@@ -328,6 +342,39 @@ export abstract class BaseJob<
         span.end();
       }
     };
+  }
+
+  protected getFeatureFlagKey(
+    _payload: z.infer<TPayload>,
+    _context: JobContext<TMetadata>
+  ): string | undefined {
+    return undefined;
+  }
+
+  private async shouldExecute(
+    payload: z.infer<TPayload>,
+    context: JobContext<TMetadata>
+  ): Promise<boolean> {
+    if (!this.featureFlagService) {
+      return true;
+    }
+
+    const flagKey = this.getFeatureFlagKey(payload, context);
+    if (!flagKey) {
+      return true;
+    }
+
+    try {
+      const enabled = await this.featureFlagService.isEnabled(flagKey, this.jobName, payload, context);
+      return enabled;
+    } catch (error) {
+      context.logger.warn('Feature flag evaluation failed; defaulting to enabled', {
+        jobName: this.jobName,
+        flagKey,
+        error: (error as Error).message,
+      });
+      return true;
+    }
   }
 
   /**

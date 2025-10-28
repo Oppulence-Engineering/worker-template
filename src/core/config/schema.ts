@@ -161,6 +161,14 @@ export const FeatureFlagsSchema = z.object({
   enableGraphiQL: z.boolean().default(true).describe('Enable GraphiQL interface'),
   enableIntrospection: z.boolean().default(true).describe('Enable GraphQL introspection'),
   enableDebugMode: z.boolean().default(false).describe('Enable debug mode'),
+  provider: z
+    .enum(['none', 'launchdarkly', 'unleash'])
+    .default('none')
+    .describe('Feature flag provider'),
+  staticFlags: z
+    .record(z.string(), z.boolean())
+    .default({})
+    .describe('Static flag overrides when provider is none'),
 });
 
 /**

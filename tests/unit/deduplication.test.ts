@@ -35,20 +35,25 @@ describe('unit: Deduplication Helpers', () => {
   it('enqueues job with dedupe jobKey and strategy mapping', async () => {
     const addJob = mock(async (_jobName: string, _payload: unknown, spec?: Record<string, unknown>) => spec);
 
+    const ttlMs = 300_000;
+    const now = 1700000000000;
+
     await enqueueDeduplicatedJob(addJob as any, {
       jobName: 'process-report',
       payload: { reportId: 'abc' },
       deduplication: {
         key: (payload) => payload.reportId,
-        ttlMs: 300_000,
+        ttlMs,
         strategy: 'replace',
       },
       taskSpec: { priority: 2 },
-      now: () => 1700000000000,
+      now: () => now,
     });
 
+    const expectedWindow = Math.floor(now / ttlMs);
+
     expect(addJob).toHaveBeenCalledWith('process-report', { reportId: 'abc' }, expect.objectContaining({
-      jobKey: 'process-report:abc:28333333',
+      jobKey: `process-report:abc:${expectedWindow}`,
       jobKeyMode: 'replace',
       priority: 2,
     }));

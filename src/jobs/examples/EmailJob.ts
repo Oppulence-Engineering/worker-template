@@ -120,6 +120,10 @@ export class EmailJob extends ExponentialRetryJob<typeof EmailPayloadSchema, voi
     return !nonRetryableErrors.some((type) => error.name === type || error.message.includes(type));
   }
 
+  protected override getFeatureFlagKey(): string | undefined {
+    return 'jobs.send_email.enabled';
+  }
+
   /**
    * Custom error handling for email-specific errors
    */

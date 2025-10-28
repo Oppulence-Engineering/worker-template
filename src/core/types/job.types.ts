@@ -4,6 +4,7 @@
  */
 
 import type { JobHelpers, Task, Logger as GraphileLogger } from 'graphile-worker';
+import type { FeatureFlagService } from '../featureFlags/FeatureFlagService';
 export type { JobHelpers } from 'graphile-worker';
 import type { Span } from '@opentelemetry/api';
 import type { z } from 'zod';
@@ -246,6 +247,8 @@ export interface IJob<
    * @returns Complete job configuration
    */
   getConfig(overrides?: Partial<JobConfig>): JobConfig;
+
+  setFeatureFlagService?(service: FeatureFlagService | undefined): void;
 }
 
 /**

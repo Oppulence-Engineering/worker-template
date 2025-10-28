@@ -305,6 +305,9 @@ create table if not exists app.scheduled_job_events (
 - Provide interface for LaunchDarkly/Unleash/Toggles.
 - Allow per-job gating and environment-aware rollout strategies.
 - Include fail-safe defaults for flag evaluation outages.
+- `FeatureFlagService` introduced with pluggable providers (static flags by default) and BaseJob-level hooks (`getFeatureFlagKey`).
+- Job registry injects the service so feature-gated jobs skip execution when flags are disabled, with logging and default-to-enabled fallback on provider errors.
+- Unit coverage (`tests/unit/feature-flags.test.ts`) exercises enabled/disabled paths.
 
 ### 13. Distributed Locking
 - Ship `ExclusiveJob` helper using Postgres advisory locks or Redis Redlock.

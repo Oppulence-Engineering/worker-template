@@ -12,6 +12,7 @@ import { createMetricsCollectors, setupMetrics } from './core/instrumentation/me
 import { setupTracing } from './core/instrumentation/tracing';
 import { ScheduleReconciler, SchedulerRegistry } from './core/scheduler';
 import { JobRegistry } from './core/worker/JobRegistry';
+import { FeatureFlagService } from './core/featureFlags';
 
 // Import example jobs
 import { EmailJob } from './jobs/examples/EmailJob';
@@ -137,6 +138,9 @@ async function main(): Promise<void> {
   // Create job registry
   const registry = new JobRegistry();
   registry.setLogger(logger);
+
+  const featureFlagService = new FeatureFlagService(config.featureFlags);
+  registry.setFeatureFlagService(featureFlagService);
 
   // Setup scheduler registry
   const schedulerRegistry = new SchedulerRegistry(logger);

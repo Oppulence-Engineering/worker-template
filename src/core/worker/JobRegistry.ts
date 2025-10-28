@@ -8,6 +8,7 @@ import type { Logger } from 'pino';
 import type { z } from 'zod';
 
 import type { IJob, JobName } from '../types';
+import type { FeatureFlagService } from '../featureFlags/FeatureFlagService';
 
 type RegisteredJob = IJob<z.ZodTypeAny, unknown, Record<string, unknown>>;
 
@@ -31,6 +32,7 @@ export class JobRegistry<TJobMap extends Record<string, IJob> = Record<string, I
    * Map of job name to job instance
    */
   private readonly jobs = new Map<JobName, RegisteredJob>();
+  private featureFlagService?: FeatureFlagService;
 
   /**
    * Logger instance
@@ -59,6 +61,10 @@ export class JobRegistry<TJobMap extends Record<string, IJob> = Record<string, I
       throw new Error(`Job '${jobName}' is already registered`);
     }
 
+    if (this.featureFlagService && typeof job.setFeatureFlagService === 'function') {
+      job.setFeatureFlagService(this.featureFlagService);
+    }
+
     this.jobs.set(jobName, job);
 
     this.logger?.info({ jobName }, `Registered job: ${jobName}`);
@@ -75,6 +81,16 @@ export class JobRegistry<TJobMap extends Record<string, IJob> = Record<string, I
     for (const job of jobs) {
       this.register(job);
     }
+    return this;
+  }
+
+  setFeatureFlagService(service: FeatureFlagService): this {
+    this.featureFlagService = service;
+
+    for (const job of this.jobs.values()) {
+      job.setFeatureFlagService?.(service);
+    }
+
     return this;
   }
 
