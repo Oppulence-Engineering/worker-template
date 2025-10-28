@@ -2,10 +2,6 @@ chart-search-root: ./helm
 chart-dirs:
   - graphile-worker
 
-# Where README templates live. Paths are relative to this file.
-templateFiles:
-  - ../_templates/README.md.gotmpl
-
 # Output file name relative to the chart directory
 outputFile: README.md
 
