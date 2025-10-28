@@ -3,6 +3,8 @@
  * @module core/instrumentation/logger
  */
 
+/* eslint-disable import/no-named-as-default, import/no-named-as-default-member */
+
 import { randomUUID } from 'crypto';
 
 import pino, { type Logger } from 'pino';
@@ -66,7 +68,7 @@ export function createLogger(config: LoggingConfig, serviceName: string): Logger
  * @returns Child logger with correlation ID
  */
 export function withCorrelationId(logger: Logger, correlationId?: CorrelationId): Logger {
-  const id = correlationId || (randomUUID() as CorrelationId);
+  const id = correlationId ?? (randomUUID() as CorrelationId);
   return logger.child({ correlationId: id });
 }
 

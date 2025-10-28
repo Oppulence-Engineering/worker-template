@@ -4,6 +4,7 @@ import type { FeatureFlags } from '../config/schema';
 export class StaticFeatureFlagProvider implements FeatureFlagProvider {
   constructor(private readonly flags: Record<string, boolean>) {}
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async evaluate(flagKey: string): Promise<boolean> {
     return this.flags[flagKey] ?? false;
   }

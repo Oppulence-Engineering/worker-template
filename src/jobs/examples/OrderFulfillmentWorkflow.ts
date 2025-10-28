@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/require-await */
+
 import { z } from 'zod';
 
 import { WorkflowJob } from '../../core/workflow';
@@ -37,10 +39,10 @@ export class OrderFulfillmentWorkflow extends WorkflowJob<
       }: {
         sharedState: OrderSharedState;
         payload: z.infer<typeof OrderPayloadSchema>;
-      }) => {
+      }): Promise<void> => {
         sharedState.auditTrail.push(`inventory reserved for ${payload.orderId}`);
       },
-      compensate: async ({ sharedState }: { sharedState: OrderSharedState }) => {
+      compensate: async ({ sharedState }: { sharedState: OrderSharedState }): Promise<void> => {
         sharedState.auditTrail.push('inventory released');
       },
     },
@@ -54,11 +56,11 @@ export class OrderFulfillmentWorkflow extends WorkflowJob<
       }: {
         sharedState: OrderSharedState;
         payload: z.infer<typeof OrderPayloadSchema>;
-      }) => {
+      }): Promise<void> => {
         sharedState.auditTrail.push(`payment captured: ${payload.amount}`);
         sharedState.charged = true;
       },
-      compensate: async ({ sharedState }: { sharedState: OrderSharedState }) => {
+      compensate: async ({ sharedState }: { sharedState: OrderSharedState }): Promise<void> => {
         if (sharedState.charged) {
           sharedState.auditTrail.push('payment refunded');
           sharedState.charged = false;
@@ -75,7 +77,7 @@ export class OrderFulfillmentWorkflow extends WorkflowJob<
       }: {
         sharedState: OrderSharedState;
         payload: z.infer<typeof OrderPayloadSchema>;
-      }) => {
+      }): Promise<void> => {
         sharedState.auditTrail.push(`order ${payload.orderId} fulfilled`);
       },
     },

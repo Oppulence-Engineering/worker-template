@@ -1,7 +1,11 @@
 /**
  * @fileoverview Generic base middleware class for composable middleware patterns
  * @module core/abstractions/BaseMiddleware
+ *
+ * Note: Lifecycle hooks are intentionally async to allow subclasses to use await.
  */
+
+/* eslint-disable @typescript-eslint/require-await */
 
 import { trace, type Span } from '@opentelemetry/api';
 

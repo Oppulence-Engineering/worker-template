@@ -1,8 +1,11 @@
 /**
  * @fileoverview Scheduled nightly report job definition.
  * @module jobs/schedules/nightlyReport
+ *
+ * Note: Some methods are intentionally async for consistency with the interface.
  */
 
+/* eslint-disable @typescript-eslint/require-await */
 
 import { z } from 'zod';
 

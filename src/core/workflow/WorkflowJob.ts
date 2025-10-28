@@ -1,7 +1,11 @@
 /**
  * @fileoverview Base workflow job abstraction built atop Graphile Worker jobs.
  * @module core/workflow/WorkflowJob
+ *
+ * Note: Some methods are intentionally async to allow subclasses to use await.
  */
+
+/* eslint-disable @typescript-eslint/require-await */
 
 import { randomUUID } from 'node:crypto';
 

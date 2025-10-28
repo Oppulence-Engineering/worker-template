@@ -1,7 +1,12 @@
 /**
  * @fileoverview Base job abstract class with extensive generics and lifecycle hooks
  * @module core/abstractions/BaseJob
+ *
+ * Note: Lifecycle hooks are intentionally async to allow subclasses to use await,
+ * even if the base implementation doesn't await anything.
  */
+
+/* eslint-disable @typescript-eslint/require-await */
 
 import { trace, type Span } from '@opentelemetry/api';
 import { z } from 'zod';
