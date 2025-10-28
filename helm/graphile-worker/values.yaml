@@ -1,0 +1,132 @@
+# Default values for the Graphile Worker Helm chart.
+# Adjust these to suit your environment.
+
+replicaCount: 1
+
+image:
+  repository: graphile-worker-template
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext: {}
+#  fsGroup: 2000
+
+securityContext: {}
+#  capabilities:
+#    drop:
+#      - ALL
+#  readOnlyRootFilesystem: true
+#  runAsNonRoot: true
+#  runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 8080
+  annotations: {}
+  labels: {}
+  healthPath: /health
+
+metricsService:
+  enabled: true
+  type: ClusterIP
+  port: 9090
+  annotations: {}
+  labels: {}
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: graphile-worker.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources: {}
+# limits:
+#   cpu: 250m
+#   memory: 512Mi
+# requests:
+#   cpu: 100m
+#   memory: 256Mi
+
+livenessProbe:
+  httpGet:
+    path: /health/live
+    port: health
+  initialDelaySeconds: 10
+  periodSeconds: 15
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /health/ready
+    port: health
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  failureThreshold: 3
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+env:
+  NODE_ENV: production
+  SERVICE_NAME: graphile-worker-template
+  DB_HOST: postgres
+  DB_PORT: "5432"
+  DB_NAME: graphile_worker
+  DB_USER: postgres
+  WORKER_CONCURRENCY: "5"
+  METRICS_ENABLED: "true"
+  METRICS_PORT: "9090"
+  METRICS_PATH: /metrics
+  HEALTH_CHECK_ENABLED: "true"
+  HEALTH_CHECK_PORT: "8080"
+  HEALTH_CHECK_PATH: /health
+  HEALTH_LIVENESS_PATH: /health/live
+  HEALTH_READINESS_PATH: /health/ready
+
+secretEnv: {}
+# DB_PASSWORD:
+#   secretName: graphile-worker-db
+#   secretKey: password
+
+envFrom: []
+# - secretRef:
+#     name: graphile-worker-env
+
+volumes: []
+# - name: certificates
+#   secret:
+#     secretName: graphile-worker-certificates
+
+volumeMounts: []
+# - name: certificates
+#   mountPath: /etc/certs
+#   readOnly: true
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

@@ -1,0 +1,9 @@
+[test]
+preload = ["./tests/setup.ts"]
+coverage = true
+coverageDir = "./coverage"
+timeout = 60000
+
+[test.env]
+NODE_ENV = "test"
+LOG_LEVEL = "error"

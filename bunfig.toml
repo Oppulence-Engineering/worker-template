@@ -1,0 +1,23 @@
+[install]
+# Install dependencies from package.json
+auto = "auto"
+# Use exact versions
+exact = true
+# Production dependencies only
+production = false
+
+[install.cache]
+# Cache directory
+dir = "~/.bun/install/cache"
+# Disable cache
+disable = false
+
+[test]
+# Test configuration
+preload = ["./tests/setup.ts"]
+coverage = true
+coverageDir = "./coverage"
+
+[run]
+# Bun runtime configuration
+bun = true

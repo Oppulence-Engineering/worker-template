@@ -1,0 +1,31 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'graphile-worker-local'
+    environment: 'development'
+
+scrape_configs:
+  # Graphile Worker Metrics
+  - job_name: 'graphile-worker'
+    static_configs:
+      - targets: ['worker:9090']
+        labels:
+          service: 'graphile-worker'
+          env: 'development'
+
+  # Prometheus Self-Monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+# Alerting configuration (optional)
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets:
+#             - alertmanager:9093
+
+# Rule files
+# rule_files:
+#   - "alerts/*.yml"

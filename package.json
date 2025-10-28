@@ -1,0 +1,121 @@
+{
+  "name": "@oppulence/graphile-worker-template",
+  "version": "1.0.0",
+  "description": "Production-ready GraphileWorker microservice template with extensive TypeScript generics, OpenTelemetry instrumentation, and enterprise-grade patterns",
+  "license": "Apache-2.0",
+  "author": "Oppulence Engineering",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Oppulence-Engineering/graphile-worker-template"
+  },
+  "keywords": [
+    "graphile-worker",
+    "typescript",
+    "microservice",
+    "opentelemetry",
+    "postgres",
+    "job-queue",
+    "worker",
+    "postgraphile",
+    "template"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./jobs": {
+      "types": "./dist/jobs/index.d.ts",
+      "import": "./dist/jobs/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "migrations",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "dev:worker": "bun run --watch src/worker.ts",
+    "dev:api": "bun run --watch src/api/server.ts",
+    "build": "bun run build:clean && bun run build:tsc",
+    "build:clean": "rm -rf dist",
+    "build:tsc": "tsc -p tsconfig.build.relaxed.json",
+    "start": "NODE_ENV=production bun run dist/index.js",
+    "start:worker": "NODE_ENV=production bun run dist/worker.js",
+    "start:api": "NODE_ENV=production bun run dist/api/server.js",
+    "test": "bun test",
+    "test:unit": "bun test --test-name-pattern=\"unit\"",
+    "test:integration": "bun test --test-name-pattern=\"integration\"",
+    "test:e2e": "bun test --test-name-pattern=\"e2e\"",
+    "test:coverage": "bun test --coverage",
+    "test:watch": "bun test --watch",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "typecheck": "tsc --noEmit",
+    "db:migrate": "node -e \"console.log('Run migrations with your preferred tool')\"",
+    "db:seed": "bun run scripts/seed.ts",
+    "docker:build": "docker build -f docker/Dockerfile -t graphile-worker-template:latest .",
+    "docker:dev": "docker-compose up -d",
+    "docker:down": "docker-compose down -v",
+    "docker:logs": "docker-compose logs -f",
+    "docs:generate": "typedoc --out docs/api src/index.ts"
+  },
+  "dependencies": {
+    "graphile-worker": "^0.16.6",
+    "postgraphile": "^4.14.0",
+    "pg": "^8.12.0",
+    "zod": "^3.23.8",
+    "pino": "^9.3.2",
+    "pino-pretty": "^11.2.2",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/sdk-node": "^0.52.1",
+    "@opentelemetry/auto-instrumentations-node": "^0.50.0",
+    "@opentelemetry/sdk-metrics": "^1.25.1",
+    "@opentelemetry/sdk-trace-node": "^1.25.1",
+    "@opentelemetry/exporter-prometheus": "^0.52.1",
+    "@opentelemetry/exporter-trace-otlp-grpc": "^0.52.1",
+    "@opentelemetry/instrumentation-pg": "^0.43.0",
+    "@opentelemetry/instrumentation-http": "^0.52.1",
+    "@opentelemetry/resources": "^1.25.1",
+    "@opentelemetry/semantic-conventions": "^1.25.1",
+    "hono": "^4.5.8",
+    "dotenv": "^16.4.5",
+    "uuid": "^10.0.0",
+    "graphql": "^16.9.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.15",
+    "@types/pg": "^8.11.6",
+    "@types/uuid": "^10.0.0",
+    "typescript": "^5.5.4",
+    "@typescript-eslint/parser": "^8.1.0",
+    "@typescript-eslint/eslint-plugin": "^8.1.0",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-import": "^2.29.1",
+    "prettier": "^3.3.3",
+    "husky": "^9.1.4",
+    "lint-staged": "^15.2.8",
+    "typedoc": "^0.26.5",
+    "@testcontainers/postgresql": "^10.11.0",
+    "testcontainers": "^10.11.0",
+    "bun-types": "^1.1.22"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "bun": ">=1.0.0"
+  },
+  "lint-staged": {
+    "*.ts": [
+      "eslint --fix",
+      "prettier --write"
+    ]
+  }
+}

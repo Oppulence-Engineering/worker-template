@@ -1,0 +1,153 @@
+version: '3.9'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: graphile-worker-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: graphile_worker
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - graphile-network
+
+  # Graphile Worker
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    container_name: graphile-worker
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: graphile_worker
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      WORKER_CONCURRENCY: 5
+      LOG_LEVEL: info
+      LOG_PRETTY: 'true'
+      METRICS_ENABLED: 'true'
+      METRICS_PORT: 9090
+      TRACING_ENABLED: 'true'
+      OTLP_ENDPOINT: http://jaeger:4317
+      SERVICE_NAME: graphile-worker-template
+      SERVICE_VERSION: 1.0.0
+      ENVIRONMENT: development
+    ports:
+      - '8080:8080' # Health check
+      - '9090:9090' # Metrics
+    volumes:
+      - ./migrations:/app/migrations:ro
+    networks:
+      - graphile-network
+    healthcheck:
+      test: ['CMD', 'bun', '-e', 'fetch("http://localhost:8080/health").then(r=>r.ok||process.exit(1))']
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+  # Jaeger - Distributed Tracing
+  jaeger:
+    image: jaegertracing/all-in-one:1.54
+    container_name: graphile-worker-jaeger
+    restart: unless-stopped
+    environment:
+      COLLECTOR_OTLP_ENABLED: 'true'
+    ports:
+      - '16686:16686' # Jaeger UI
+      - '4317:4317' # OTLP gRPC
+      - '4318:4318' # OTLP HTTP
+    networks:
+      - graphile-network
+
+  # Prometheus - Metrics Collection
+  prometheus:
+    image: prom/prometheus:v2.48.1
+    container_name: graphile-worker-prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - '9091:9090' # Prometheus UI (on 9091 to avoid conflict with worker metrics)
+    networks:
+      - graphile-network
+    depends_on:
+      - worker
+
+  # Grafana - Metrics Visualization
+  grafana:
+    image: grafana/grafana:10.2.3
+    container_name: graphile-worker-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_INSTALL_PLUGINS: ''
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./docker/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./docker/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    ports:
+      - '3000:3000' # Grafana UI
+    networks:
+      - graphile-network
+    depends_on:
+      - prometheus
+
+  # Redis (Optional - for caching/rate limiting)
+  redis:
+    image: redis:7-alpine
+    container_name: graphile-worker-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - graphile-network
+    profiles:
+      - with-redis
+
+volumes:
+  postgres_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  graphile-network:
+    driver: bridge
